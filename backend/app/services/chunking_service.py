@@ -5,6 +5,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence
+import logging
 
 try:
     from unstructured.partition.pdf import partition_pdf
@@ -82,6 +83,15 @@ class StructuredChunker:
             return self.parse_plain_text(text)
         except ImportError:
             raise ImportError("Please install 'unstructured' or 'pypdf' to parse PDFs.")
+        except Exception as exc:  # pragma: no cover
+            logging.getLogger(__name__).warning(
+                "Failed to parse PDF with parsers, falling back to raw text: %s",
+                pdf_path,
+                exc_info=exc,
+            )
+            raw_bytes = pdf_path.read_bytes()
+            text = raw_bytes.decode("utf-8", errors="ignore")
+            return self.parse_plain_text(text)
 
             
     def parse_html(self, html_content: str) -> List[Dict]:

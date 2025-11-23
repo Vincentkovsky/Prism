@@ -62,9 +62,9 @@ TASK_SLA_SECONDS = {
 }
 
 
-@lru_cache(maxsize=1)
 def get_document_repository() -> DocumentRepository:
-    return create_document_repository(settings)
+    current_settings = get_settings()
+    return create_document_repository(current_settings)
 
 
 @lru_cache(maxsize=1)

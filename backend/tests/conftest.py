@@ -32,7 +32,7 @@ def client(tmp_path_factory: pytest.TempPathFactory) -> Generator[TestClient, No
     repo = LocalDocumentRepository(store_path=uploads_dir / "documents.json")
     settings = get_settings()
     embedder = StubEmbedder()
-    subscription = SubscriptionService()
+    subscription = get_subscription_service()
     service = DocumentService(
         repo=repo,
         settings=settings,

@@ -6,6 +6,7 @@ import { qaQuery } from '../api'
 
 const props = defineProps<{
   documentId: string
+  isAuthenticated: boolean
 }>()
 
 interface Message {
@@ -69,15 +70,33 @@ const formatTime = (date: Date) => {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
-// Clear messages when document changes
-watch(() => props.documentId, () => {
+const resetMessages = () => {
   messages.value = []
-})
+}
+
+// Clear messages when document changes or user logs out
+watch(
+  () => [props.documentId, props.isAuthenticated],
+  ([, authed]) => {
+    if (!authed) {
+      resetMessages()
+    } else {
+      resetMessages()
+    }
+  },
+)
 </script>
 
 <template>
   <div class="chat-wrapper">
-    <div v-if="!documentId" class="empty-state">
+    <div v-if="!isAuthenticated" class="empty-state">
+      <div class="empty-content">
+        <div class="icon-placeholder">🔐</div>
+        <h3>请先登录</h3>
+        <p>登录后即可与文档进行对话。</p>
+      </div>
+    </div>
+    <div v-else-if="!documentId" class="empty-state">
       <div class="empty-content">
         <div class="icon-placeholder">💬</div>
         <h3>No Document Selected</h3>

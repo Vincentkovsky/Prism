@@ -4,7 +4,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Optional
 
-from pydantic import BaseModel, AnyHttpUrl
+from pydantic import BaseModel, AnyHttpUrl, Field, AliasChoices
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -16,8 +16,14 @@ class Settings(BaseSettings):
     storage_base_path: Path = Path("backend/app/storage/uploads")
 
     # Supabase
-    supabase_url: Optional[AnyHttpUrl] = None
-    supabase_anon_key: Optional[str] = None
+    supabase_url: Optional[AnyHttpUrl] = Field(
+        default=None,
+        validation_alias=AliasChoices("VITE_SUPABASE_URL", "SUPABASE_URL"),
+    )
+    supabase_anon_key: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("VITE_SUPABASE_ANON_KEY", "SUPABASE_ANON_KEY"),
+    )
 
     # OpenAI
     openai_api_key: Optional[str] = None

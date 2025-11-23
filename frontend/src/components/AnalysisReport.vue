@@ -7,6 +7,7 @@ import { generateAnalysis, getAnalysis } from '../api'
 
 const props = defineProps<{
   documentId: string
+  isAuthenticated: boolean
 }>()
 
 const md = new MarkdownIt({
@@ -154,17 +155,27 @@ onUnmounted(() => {
   stopPolling()
 })
 
-watch(() => props.documentId, () => {
-  report.value = null
-  statusMessage.value = ''
-  isLoading.value = false
-  stopPolling()
-})
+watch(
+  () => [props.documentId, props.isAuthenticated],
+  () => {
+    report.value = null
+    statusMessage.value = ''
+    isLoading.value = false
+    stopPolling()
+  },
+)
 </script>
 
 <template>
   <div class="analysis-wrapper">
-    <div v-if="!documentId" class="empty-state">
+    <div v-if="!isAuthenticated" class="empty-state">
+      <div class="empty-content">
+        <div class="icon-placeholder">🔐</div>
+        <h3>请先登录</h3>
+        <p>登录后即可生成深度分析报告。</p>
+      </div>
+    </div>
+    <div v-else-if="!documentId" class="empty-state">
       <div class="empty-content">
         <div class="icon-placeholder">📊</div>
         <h3>No Document Selected</h3>

@@ -85,6 +85,7 @@ def test_get_document_status(client):
 
 def test_upload_document_refund_once_on_inline_failure(client, monkeypatch):
     token = "inline-fail-user"
+    client.app.state.test_service.settings.document_pipeline_enabled = True  # type: ignore[attr-defined]
 
     def failing_embed(*args, **kwargs):
         raise RuntimeError("embed failed")

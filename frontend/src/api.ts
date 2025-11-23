@@ -1,23 +1,53 @@
 import axios from 'axios'
 
+export interface CurrentUser {
+  id: string
+  email: string
+  is_subscriber: boolean
+}
+
+const AUTH_STORAGE_KEY = 'auth_token'
+
 const api = axios.create({
   baseURL: '/api',
 })
 
-// Simple token management for demo purposes
-// In a real app, this would come from a login flow
-let authToken = 'user-test'
+let authToken = localStorage.getItem(AUTH_STORAGE_KEY)
 
 api.interceptors.request.use((config) => {
-  if (authToken) {
+  if (authToken && config.headers) {
     config.headers.Authorization = `Bearer ${authToken}`
   }
   return config
 })
 
-export const setAuthToken = (token: string) => {
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      clearAuthToken()
+    }
+    return Promise.reject(error)
+  },
+)
+
+export const setAuthToken = (token: string | null) => {
   authToken = token
+  if (token) {
+    localStorage.setItem(AUTH_STORAGE_KEY, token)
+    api.defaults.headers.common.Authorization = `Bearer ${token}`
+  } else {
+    clearAuthToken()
+  }
 }
+
+export const clearAuthToken = () => {
+  authToken = null
+  localStorage.removeItem(AUTH_STORAGE_KEY)
+  delete api.defaults.headers.common.Authorization
+}
+
+export const getStoredToken = () => authToken
 
 export const uploadDocument = (file: File) => {
   const formData = new FormData()
@@ -51,5 +81,9 @@ export const generateAnalysis = (documentId: string) => {
 
 export const getAnalysis = (documentId: string) => {
   return api.get(`/qa/analysis/${documentId}`)
+}
+
+export const fetchCurrentUser = () => {
+  return api.get<CurrentUser>('/auth/me')
 }
 

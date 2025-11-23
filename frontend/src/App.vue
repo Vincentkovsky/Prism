@@ -1,17 +1,98 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { ElMessage } from 'element-plus'
+import type { Session } from '@supabase/supabase-js'
 import DocumentUploader from './components/DocumentUploader.vue'
 import ChatInterface from './components/ChatInterface.vue'
 import AnalysisReport from './components/AnalysisReport.vue'
-import { Document, ChatLineRound, DataAnalysis } from '@element-plus/icons-vue'
+import AuthModal from './components/AuthModal.vue'
+import { Document, ChatLineRound, DataAnalysis, ArrowDown } from '@element-plus/icons-vue'
+import { supabase } from './lib/supabase'
+import { fetchCurrentUser, setAuthToken, clearAuthToken, type CurrentUser } from './api'
 
 const activeTab = ref('upload')
 const currentDocumentId = ref('')
+const authDialogVisible = ref(false)
+const currentUser = ref<CurrentUser | null>(null)
+const session = ref<Session | null>(null)
+const loadingUser = ref(true)
+
+const isAuthenticated = computed(() => !!currentUser.value)
 
 const handleDocumentUploaded = (id: string) => {
   currentDocumentId.value = id
   activeTab.value = 'chat'
 }
+
+const handleAuthSuccess = async (newSession: Session | null) => {
+  authDialogVisible.value = false
+  if (!newSession) {
+    ElMessage.success('注册成功，请验证邮箱后登录')
+    return
+  }
+  await applySession(newSession)
+}
+
+const applySession = async (newSession: Session) => {
+  session.value = newSession
+  setAuthToken(newSession.access_token)
+  await loadCurrentUser()
+}
+
+const loadCurrentUser = async () => {
+  try {
+    const { data } = await fetchCurrentUser()
+    currentUser.value = data
+  } catch (error) {
+    clearAuthToken()
+    currentUser.value = null
+  } finally {
+    loadingUser.value = false
+  }
+}
+
+const initializeAuth = async () => {
+  const { data } = await supabase.auth.getSession()
+  if (data.session) {
+    await applySession(data.session)
+  } else {
+    clearAuthToken()
+    loadingUser.value = false
+  }
+
+  supabase.auth.onAuthStateChange((event, sessionValue) => {
+    if (sessionValue) {
+      applySession(sessionValue)
+    } else if (event === 'SIGNED_OUT') {
+      clearAuthState()
+    }
+  })
+}
+
+const clearAuthState = () => {
+  clearAuthToken()
+  currentUser.value = null
+  session.value = null
+  currentDocumentId.value = ''
+}
+
+const handleLogout = async () => {
+  await supabase.auth.signOut()
+  clearAuthState()
+}
+
+watch(isAuthenticated, (authed) => {
+  if (!authed) {
+    currentDocumentId.value = ''
+    if (activeTab.value !== 'upload') {
+      activeTab.value = 'upload'
+    }
+  }
+})
+
+onMounted(() => {
+  initializeAuth()
+})
 </script>
 
 <template>
@@ -34,16 +115,16 @@ const handleDocumentUploaded = (id: string) => {
           </div>
           <div 
             class="nav-item" 
-            :class="{ active: activeTab === 'chat', disabled: !currentDocumentId }"
-            @click="currentDocumentId && (activeTab = 'chat')"
+            :class="{ active: activeTab === 'chat', disabled: !isAuthenticated || !currentDocumentId }"
+            @click="isAuthenticated && currentDocumentId && (activeTab = 'chat')"
           >
             <el-icon><ChatLineRound /></el-icon>
             <span>Chat Q&A</span>
           </div>
           <div 
             class="nav-item" 
-            :class="{ active: activeTab === 'analysis', disabled: !currentDocumentId }"
-            @click="currentDocumentId && (activeTab = 'analysis')"
+            :class="{ active: activeTab === 'analysis', disabled: !isAuthenticated || !currentDocumentId }"
+            @click="isAuthenticated && currentDocumentId && (activeTab = 'analysis')"
           >
             <el-icon><DataAnalysis /></el-icon>
             <span>Analysis</span>
@@ -51,11 +132,11 @@ const handleDocumentUploaded = (id: string) => {
         </div>
 
         <div class="sidebar-footer">
-          <p class="status-text" v-if="currentDocumentId">
-            <span class="dot online"></span> Doc Loaded
+          <p class="status-text" v-if="isAuthenticated">
+            <span class="dot online"></span> 已登录
           </p>
           <p class="status-text" v-else>
-            <span class="dot offline"></span> No Document
+            <span class="dot offline"></span> 未登录
           </p>
         </div>
       </el-aside>
@@ -68,9 +149,25 @@ const handleDocumentUploaded = (id: string) => {
               activeTab === 'chat' ? 'Interactive Q&A' : 
               'Deep Analysis Report' 
             }}</h2>
-            <div class="user-profile">
-              <el-avatar size="small" src="https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png" />
-              <span class="username">Demo User</span>
+            <div class="header-actions">
+              <el-skeleton v-if="loadingUser" animated :rows="1" style="width: 160px" />
+              <template v-else>
+                <div v-if="isAuthenticated" class="user-profile">
+                  <el-avatar size="small" src="https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png" />
+                  <el-dropdown trigger="click">
+                    <span class="username">
+                      {{ currentUser?.email }}
+                      <el-icon class="dropdown-icon"><ArrowDown /></el-icon>
+                    </span>
+                    <template #dropdown>
+                      <el-dropdown-menu>
+                        <el-dropdown-item @click="handleLogout">退出登录</el-dropdown-item>
+                      </el-dropdown-menu>
+                    </template>
+                  </el-dropdown>
+                </div>
+                <el-button v-else type="primary" @click="authDialogVisible = true">登录 / 注册</el-button>
+              </template>
             </div>
           </div>
         </el-header>
@@ -78,17 +175,29 @@ const handleDocumentUploaded = (id: string) => {
         <el-main class="content-area">
           <transition name="fade" mode="out-in">
             <keep-alive>
-              <component 
-                :is="activeTab === 'upload' ? DocumentUploader : activeTab === 'chat' ? ChatInterface : AnalysisReport"
-                :document-id="currentDocumentId"
+              <DocumentUploader
+                v-if="activeTab === 'upload'"
+                :is-authenticated="isAuthenticated"
                 @document-uploaded="handleDocumentUploaded"
-                :key="activeTab"
+                @request-auth="authDialogVisible = true"
+              />
+              <ChatInterface
+                v-else-if="activeTab === 'chat'"
+                :document-id="currentDocumentId"
+                :is-authenticated="isAuthenticated"
+              />
+              <AnalysisReport
+                v-else
+                :document-id="currentDocumentId"
+                :is-authenticated="isAuthenticated"
               />
             </keep-alive>
           </transition>
         </el-main>
       </el-container>
     </el-container>
+
+    <AuthModal v-model:visible="authDialogVisible" @authenticated="handleAuthSuccess" />
   </div>
 </template>
 
@@ -232,6 +341,17 @@ const handleDocumentUploaded = (id: string) => {
   font-size: 14px;
   font-weight: 500;
   color: #303133;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 200px;
+}
+
+.dropdown-icon {
+  margin-left: 4px;
 }
 
 .content-area {

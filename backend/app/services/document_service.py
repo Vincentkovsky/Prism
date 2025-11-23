@@ -68,7 +68,7 @@ class DocumentService:
         except Exception as exc:
             if not getattr(exc, "credits_refunded", False):
                 self.subscription.refund_credits(user_id, "document_upload_pdf", reason="upload_failed")
-            raise
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
 
     def submit_url(
         self,
@@ -104,7 +104,7 @@ class DocumentService:
         except Exception as exc:
             if not getattr(exc, "credits_refunded", False):
                 self.subscription.refund_credits(user_id, "document_upload_url", reason="upload_failed")
-            raise
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
 
     def list_documents(self, user_id: str):
         return self.repo.list_by_user(user_id)

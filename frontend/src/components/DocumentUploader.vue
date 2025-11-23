@@ -4,7 +4,11 @@ import { ElMessage, UploadFile } from 'element-plus'
 import { UploadFilled, Link, CircleCheckFilled, Loading } from '@element-plus/icons-vue'
 import { uploadDocument, submitUrl, getDocumentStatus } from '../api'
 
-const emit = defineEmits(['document-uploaded'])
+const props = defineProps<{
+  isAuthenticated: boolean
+}>()
+
+const emit = defineEmits(['document-uploaded', 'request-auth'])
 
 const activeTab = ref('file')
 const urlInput = ref('')
@@ -14,7 +18,17 @@ const statusMessage = ref('')
 const documentId = ref('')
 const pollingInterval = ref<number | null>(null)
 
+const requireAuth = () => {
+  if (!props.isAuthenticated) {
+    ElMessage.warning('请先登录后再上传文档')
+    emit('request-auth')
+    return true
+  }
+  return false
+}
+
 const handleFileChange = async (uploadFile: UploadFile) => {
+  if (requireAuth()) return
   if (!uploadFile.raw) return
   
   const file = uploadFile.raw
@@ -43,6 +57,7 @@ const handleFileChange = async (uploadFile: UploadFile) => {
 }
 
 const handleSubmitUrl = async () => {
+  if (requireAuth()) return
   if (!urlInput.value) return
   
   try {
@@ -113,6 +128,10 @@ onUnmounted(() => {
 
 <template>
   <div class="uploader-wrapper">
+    <div v-if="!isAuthenticated" class="auth-overlay">
+      <p>登录后即可上传和分析白皮书</p>
+      <el-button type="primary" @click="$emit('request-auth')">前往登录</el-button>
+    </div>
     <el-card class="uploader-card">
       <template #header>
         <div class="card-header">
@@ -213,6 +232,7 @@ onUnmounted(() => {
   max-width: 800px;
   margin: 0 auto;
   padding-top: 20px;
+  position: relative;
 }
 
 .uploader-card {
@@ -318,6 +338,21 @@ onUnmounted(() => {
   padding: 20px;
   border-radius: 12px;
   box-shadow: 0 2px 12px rgba(0,0,0,0.02);
+}
+
+.auth-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.92);
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  border-radius: 16px;
+  text-align: center;
+  padding: 24px;
 }
 
 .feature-item h3 {

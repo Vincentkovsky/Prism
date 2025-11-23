@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from abc import ABC, abstractmethod
+import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -157,8 +158,13 @@ class SupabaseDocumentRepository(DocumentRepository):
 
 def create_document_repository(settings: Settings) -> DocumentRepository:
     if settings.supabase_url and settings.supabase_anon_key:
-        client = get_supabase_client()
-        return SupabaseDocumentRepository(client)
-    store_path = settings.storage_base_path.parent / "documents.json"
+        try:
+            client = get_supabase_client()
+            return SupabaseDocumentRepository(client)
+        except RuntimeError:
+            logging.getLogger(__name__).warning(
+                "Supabase client unavailable, falling back to local repository",
+            )
+    store_path = settings.storage_base_path / "documents.json"
     return LocalDocumentRepository(store_path=store_path)
 
