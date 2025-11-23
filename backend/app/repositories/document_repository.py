@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 try:
-    from supabase import Client
+    from supabase import Client  # type: ignore
 except ImportError:  # pragma: no cover
     Client = Any  # type: ignore
 
@@ -34,6 +34,10 @@ class DocumentRepository(ABC):
 
     @abstractmethod
     def delete(self, document_id: str) -> None: ...
+
+    def set_access_token(self, token: Optional[str]) -> None:
+        """Optionally override to inject per-request auth."""
+        return None
 
 
 class LocalDocumentRepository(DocumentRepository):
@@ -83,6 +87,9 @@ class LocalDocumentRepository(DocumentRepository):
             data.pop(document_id)
             self._save(data)
 
+    def set_access_token(self, token: Optional[str]) -> None:
+        return None
+
     def _serialize(self, document: Document) -> Dict:
         payload = document.model_dump()
         if document.storage_path:
@@ -94,6 +101,7 @@ class SupabaseDocumentRepository(DocumentRepository):
     def __init__(self, client: Client, table: str = "documents"):
         self.client = client
         self.table = table
+        self._default_token = getattr(client, "supabase_key", None)
 
     def create(self, document: Document) -> Document:
         payload = self._serialize(document)
@@ -129,6 +137,11 @@ class SupabaseDocumentRepository(DocumentRepository):
 
     def delete(self, document_id: str) -> None:
         self.client.table(self.table).delete().eq("id", document_id).execute()
+
+    def set_access_token(self, token: Optional[str]) -> None:
+        target = token or self._default_token
+        if target:
+            self.client.postgrest.auth(target)
 
     def _serialize(self, document: Document) -> Dict:
         payload = document.model_dump()

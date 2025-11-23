@@ -34,6 +34,7 @@ build/
 # Uploaded files & temp storage
 backend/app/storage/uploads/
 backend/chunks/
+backend/app/storage/
 
 # Local config
 .env.local

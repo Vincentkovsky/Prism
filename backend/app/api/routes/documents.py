@@ -44,7 +44,12 @@ async def upload_document(
     service: DocumentService = Depends(get_document_service),
 ) -> UploadResponse:
     priority = TaskPriority.PREMIUM if current_user.is_subscriber else TaskPriority.STANDARD
-    document = service.upload_pdf(file, user_id=current_user.id, priority=priority)
+    document = service.upload_pdf(
+        file,
+        user_id=current_user.id,
+        priority=priority,
+        access_token=current_user.access_token,
+    )
     return UploadResponse(document_id=document.id, status=document.status.value)
 
 
@@ -55,7 +60,12 @@ async def submit_document_url(
     service: DocumentService = Depends(get_document_service),
 ) -> UploadResponse:
     priority = TaskPriority.PREMIUM if current_user.is_subscriber else TaskPriority.STANDARD
-    document = service.submit_url(payload.url, user_id=current_user.id, priority=priority)
+    document = service.submit_url(
+        payload.url,
+        user_id=current_user.id,
+        priority=priority,
+        access_token=current_user.access_token,
+    )
     return UploadResponse(document_id=document.id, status=document.status.value)
 
 
@@ -64,7 +74,7 @@ async def list_documents(
     current_user: UserContext = Depends(get_current_user),
     service: DocumentService = Depends(get_document_service),
 ):
-    return service.list_documents(current_user.id)
+    return service.list_documents(current_user.id, access_token=current_user.access_token)
 
 
 @router.get("/{document_id}", response_model=Document)
@@ -73,7 +83,11 @@ async def get_document(
     current_user: UserContext = Depends(get_current_user),
     service: DocumentService = Depends(get_document_service),
 ):
-    return service.get_document(document_id=document_id, user_id=current_user.id)
+    return service.get_document(
+        document_id=document_id,
+        user_id=current_user.id,
+        access_token=current_user.access_token,
+    )
 
 
 @router.delete("/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -82,7 +96,11 @@ async def delete_document(
     current_user: UserContext = Depends(get_current_user),
     service: DocumentService = Depends(get_document_service),
 ) -> Response:
-    service.delete_document(document_id=document_id, user_id=current_user.id)
+    service.delete_document(
+        document_id=document_id,
+        user_id=current_user.id,
+        access_token=current_user.access_token,
+    )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -92,7 +110,11 @@ async def get_document_status(
     current_user: UserContext = Depends(get_current_user),
     service: DocumentService = Depends(get_document_service),
 ):
-    status_payload = service.get_document_status(document_id=document_id, user_id=current_user.id)
+    status_payload = service.get_document_status(
+        document_id=document_id,
+        user_id=current_user.id,
+        access_token=current_user.access_token,
+    )
     return DocumentStatusResponse(
         document_id=status_payload["document_id"],
         status=status_payload["status"].value if hasattr(status_payload["status"], "value") else status_payload["status"],

@@ -51,12 +51,12 @@ async def _resolve_supabase_user(token: str, settings: Settings) -> UserContext:
     subscription = get_subscription_service()
     plan = subscription.get_user_plan(user_id)
     is_subscriber = plan != "free"
-    return UserContext(id=user_id, email=email, is_subscriber=is_subscriber)
+    return UserContext(id=user_id, email=email, is_subscriber=is_subscriber, access_token=token)
 
 
 def _mock_user_context(token: str) -> UserContext:
     is_subscriber = token.endswith("-pro") or token.startswith("pro-")
-    return UserContext(id=token, email=f"{token}@example.com", is_subscriber=is_subscriber)
+    return UserContext(id=token, email=f"{token}@example.com", is_subscriber=is_subscriber, access_token=token)
 
 
 def _looks_like_jwt(token: str) -> bool:

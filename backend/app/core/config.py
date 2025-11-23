@@ -54,6 +54,7 @@ class UserContext(BaseModel):
     id: str
     email: str
     is_subscriber: bool = False
+    access_token: str | None = None
 
 
 @lru_cache(maxsize=1)
