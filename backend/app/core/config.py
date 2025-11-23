@@ -19,12 +19,20 @@ class Settings(BaseSettings):
     supabase_url: Optional[AnyHttpUrl] = None
     supabase_anon_key: Optional[str] = None
 
-    #openai
+    # OpenAI
     openai_api_key: Optional[str] = None
 
     # Celery / Redis
     redis_url: str = "redis://localhost:6379/0"
     celery_broker_url: str = "redis://localhost:6379/0"
+
+    # Chroma
+    chroma_server_host: Optional[str] = None
+    chroma_server_port: Optional[int] = None
+    chroma_server_ssl: bool = False
+    chroma_server_api_key: Optional[str] = None
+    chroma_collection: str = "documents"
+    vector_log_dir: Optional[Path] = Path("backend/app/storage/vector_logs")
 
     # Feature flags
     run_tasks_inline: bool = True

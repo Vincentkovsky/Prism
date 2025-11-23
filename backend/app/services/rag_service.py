@@ -7,7 +7,7 @@ import chromadb
 from openai import OpenAI
 
 from ..core.config import get_settings
-from .cache_service import CacheService, qa_cache_key, chunks_cache_key
+from .cache_service import CacheService, qa_cache_key, chunks_cache_key, analysis_cache_key
 
 
 class RAGService:
@@ -36,6 +36,10 @@ class RAGService:
         self.cache = cache or CacheService(redis_client=redis_client)
 
     # --- Public API -----------------------------------------------------
+
+    def get_analysis(self, document_id: str) -> Optional[Dict[str, Any]]:
+        cache_key = analysis_cache_key(document_id)
+        return self._cache_get_json(cache_key, layer="analysis")
 
     def query(
         self,

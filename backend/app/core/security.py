@@ -14,5 +14,6 @@ async def get_current_user(
     token = credentials.credentials.strip()
     if not token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
-    return UserContext(id=token, email=f"{token}@example.com")
+    is_subscriber = token.endswith("-pro") or token.startswith("pro-")
+    return UserContext(id=token, email=f"{token}@example.com", is_subscriber=is_subscriber)
 

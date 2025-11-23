@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .api.routes import documents
+from .api.routes import documents, subscription, qa
 from .core.config import get_settings
 
 
@@ -18,6 +18,8 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(documents.router)
+    app.include_router(subscription.router)
+    app.include_router(qa.router)
 
     @app.get("/health")
     async def health():

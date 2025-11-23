@@ -22,9 +22,9 @@
   - [x] 引入表格专用处理：HTML→Markdown、GPT 摘要（如不可用则降级）、元数据 `element_type=table`。
   - [x] 使用 tiktoken 计算 token，基于阈值控制分块与 overlap。
   - [x] 构建标题层级树（H1/H2/H3) + page_number 元数据。
-- [ ] **doc-embed-prod**
-  - [ ] 改为 text-embedding-3-large，100 chunk/batch 调用。
-  - [ ] 接入托管 Chroma/向量服务，支持多实例与回滚日志。
+- [x] **doc-embed-prod**
+  - [x] 改为 text-embedding-3-large，100 chunk/batch 调用。
+  - [x] 接入托管 Chroma/向量服务，支持多实例与回滚日志。
 
 ## 2. RAG 查询服务
 
@@ -46,61 +46,61 @@
 
 ## 3. 分析报告 LangGraph
 
-- [ ] **analysis-planner**
-  - [ ] `make_generate_sub_queries(openai_client)` 生成 3-5 子问题，JSON 解析校验。
-  - [ ] 将维度列表写入状态 `sub_queries`。
-- [ ] **analysis-retriever**
-  - [ ] `make_retrieve_all_contexts(rag_service)` 批量获取 chunk、去重、拼 context。
-  - [ ] 确保合并文本时保持 section_path 标记。
-- [ ] **analysis-analyzers**
-  - [ ] `make_analyze_dimension` 共享 `openai_client`，根据维度提示输出 Markdown 报告+评分。
-  - [ ] 定义 `analyze_tech/econ/team/risk` 包装器，更新 `analysis_results`。
-- [ ] **analysis-synthesizer**
-  - [ ] `make_synthesize_final_report` 在所有维度结果齐备后触发 LLM。
-  - [ ] 输出 JSON（overall_score/strengths/risks/recommendation）并附维度报告。
+- [x] **analysis-planner**
+  - [x] `make_generate_sub_queries(openai_client)` 生成 3-5 子问题，JSON 解析校验。
+  - [x] 将维度列表写入状态 `sub_queries`。
+- [x] **analysis-retriever**
+  - [x] `make_retrieve_all_contexts(rag_service)` 批量获取 chunk、去重、拼 context。
+  - [x] 确保合并文本时保持 section_path 标记。
+- [x] **analysis-analyzers**
+  - [x] `make_analyze_dimension` 共享 `openai_client`，根据维度提示输出 Markdown 报告+评分。
+  - [x] 定义 `analyze_tech/econ/team/risk` 包装器，更新 `analysis_results`。
+- [x] **analysis-synthesizer**
+  - [x] `make_synthesize_final_report` 在所有维度结果齐备后触发 LLM。
+  - [x] 输出 JSON（overall_score/strengths/risks/recommendation）并附维度报告。
 
 ## 4. 异步任务与队列
 
-- [ ] **celery-tasks**
-  - [ ] `parse_document_task`：多阶段 `update_state`（0/30/50/80/100%）。
-  - [ ] `generate_analysis_task(document_id, user_id)`：执行工作流，异常上报。
-- [ ] **task-priority**
-  - [ ] 为付费/免费/批量任务配置不同 Celery 队列与 concurrency。
-  - [ ] 失败回滚：调用 `refund_credits`，记录日志并重试策略。
-- [ ] **task-observability**
-  - [ ] 任务入队/完成日志、Prometheus 指标、SLA 报警。
+- [x] **celery-tasks**
+  - [x] `parse_document_task`：多阶段 `update_state`（0/30/50/80/100%）。
+  - [x] `generate_analysis_task(document_id, user_id)`：执行工作流，异常上报。
+- [x] **task-priority**
+  - [x] 为付费/免费/批量任务配置不同 Celery 队列与 concurrency。
+  - [x] 失败回滚：调用 `refund_credits`，记录日志并重试策略。
+- [x] **task-observability**
+  - [x] 任务入队/完成日志、Prometheus 指标、SLA 报警。
 
 ## 5. 订阅与积分
 
-- [ ] **subscription-checkout**
-  - [ ] 定义 `SUBSCRIPTION_PLANS`、Lemon Squeezy webhook 处理、Supabase RLS。
-  - [ ] API：`/api/subscription`, `/api/subscription/checkout`, `/api/subscription/usage`。
-- [ ] **credit-ledger**
-  - [ ] `CREDIT_PRICING` SKU、`check_and_consume_credits` 事务及 `usage_logs` 记录。
-  - [ ] `refund_credits` 退还逻辑及 `_refund` 日志，月度重置 `reset_monthly_credits`。
+- [x] **subscription-checkout**
+  - [x] 定义 `SUBSCRIPTION_PLANS`、Lemon Squeezy webhook 处理、Supabase RLS。
+  - [x] API：`/api/subscription`, `/api/subscription/checkout`, `/api/subscription/usage`。
+- [x] **credit-ledger**
+  - [x] `CREDIT_PRICING` SKU、`check_and_consume_credits` 事务及 `usage_logs` 记录。
+  - [x] `refund_credits` 退还逻辑及 `_refund` 日志，月度重置 `reset_monthly_credits`。
 
 ## 6. FastAPI 接口层
 
-- [ ] **api-documents**
-  - [ ] 上传、列表、详情、删除、状态查询端点与 `get_current_user` 依赖。
-  - [ ] 上传失败时触发积分回滚。
-- [ ] **api-qa-analysis**
-  - [ ] `/api/qa/query`（限流、缓存标记、历史记录）、`/api/qa/history/{doc_id}`。
-  - [ ] `/api/analysis/generate` 创建任务并扣减 50 积分，暴露任务状态查询。
-- [ ] **api-subscription**
-  - [ ] `/api/subscription`、`/api/api-keys` CRUD、验证 plan 权限。
+- [x] **api-documents**
+  - [x] 上传、列表、详情、删除、状态查询端点与 `get_current_user` 依赖。
+  - [x] 上传失败时触发积分回滚。
+- [x] **api-qa-analysis**
+  - [x] `/api/qa/query`（限流、缓存标记、历史记录）、`/api/qa/history/{doc_id}`。
+  - [x] `/api/analysis/generate` 创建任务并扣减 50 积分，暴露任务状态查询。
+- [x] **api-subscription**
+  - [x] `/api/subscription`、`/api/api-keys` CRUD、验证 plan 权限。
 
 ## 7. 前端实现
 
-- [ ] **frontend-uploader**
-  - [ ] `DocumentUploader` 组件（Element Plus Upload+URL input）。
-  - [ ] 展示上传进度、成功状态、错误提示。
-- [ ] **frontend-chat**
-  - [ ] 聊天消息列表、引用 Tag、输入框回车发送。
-  - [ ] 显示缓存命中、队列状态提示。
-- [ ] **frontend-analysis**
-  - [ ] `AnalysisReport` Tab + Markdown 渲染 + 进度条。
-  - [ ] 导出按钮调用 `/api/analysis/{id}/export`。
+- [x] **frontend-uploader**
+  - [x] `DocumentUploader` 组件（Element Plus Upload+URL input）。
+  - [x] 展示上传进度、成功状态、错误提示。
+- [x] **frontend-chat**
+  - [x] 聊天消息列表、引用 Tag、输入框回车发送。
+  - [x] 显示缓存命中、队列状态提示。
+- [x] **frontend-analysis**
+  - [x] `AnalysisReport` Tab + Markdown 渲染 + 进度条。
+  - [x] 导出按钮调用 `/api/analysis/{id}/export`。
 
 ## 8. 基础设施与安全
 
@@ -130,7 +130,7 @@
 - [ ] **tests-rag-analysis**
   - [ ] 覆盖 RAG Service 缓存命中/未命中、重排序、answer 兜底等路径。
   - [ ] LangGraph 工作流的 planner/retriever/analyzer/synthesizer 单元 + 集成测试。
-- [ ] **tests-subscription-credit**
-  - [ ] 订阅扣费、退款、LemonSqueezy webhook、API Key 权限校验。
+- [x] **tests-subscription-credit**
+  - [x] 订阅扣费、退款、LemonSqueezy webhook、API Key 权限校验。
 
 

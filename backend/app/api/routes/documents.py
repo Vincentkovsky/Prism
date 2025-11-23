@@ -5,31 +5,21 @@ from fastapi import status
 from pydantic import BaseModel, HttpUrl
 
 from ...core.config import UserContext, get_settings
-from ...core.supabase_client import get_supabase_client
 from ...core.security import get_current_user
 from ...models.document import Document
-from ...repositories.document_repository import (
-    DocumentRepository,
-    LocalDocumentRepository,
-    SupabaseDocumentRepository,
-)
+from ...repositories.document_repository import DocumentRepository, create_document_repository
 from ...services.document_service import DocumentService
+from ...services.subscription_service import get_subscription_service
+from ...tasks.priority import TaskPriority
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
 
 
-def get_document_repository(settings) -> DocumentRepository:
-    if settings.supabase_url and settings.supabase_anon_key:
-        client = get_supabase_client()
-        return SupabaseDocumentRepository(client)
-    store_path = settings.storage_base_path.parent / "documents.json"
-    return LocalDocumentRepository(store_path=store_path)
-
-
 def get_document_service() -> DocumentService:
     settings = get_settings()
-    repo = get_document_repository(settings)
-    return DocumentService(repo=repo, settings=settings)
+    repo = create_document_repository(settings)
+    subscription = get_subscription_service()
+    return DocumentService(repo=repo, settings=settings, subscription_service=subscription)
 
 
 class UploadResponse(BaseModel):
@@ -41,13 +31,20 @@ class SubmitUrlRequest(BaseModel):
     url: HttpUrl
 
 
+class DocumentStatusResponse(BaseModel):
+    document_id: str
+    status: str
+    error_message: str | None = None
+
+
 @router.post("/upload", response_model=UploadResponse, status_code=status.HTTP_201_CREATED)
 async def upload_document(
     file: UploadFile = File(...),
     current_user: UserContext = Depends(get_current_user),
     service: DocumentService = Depends(get_document_service),
 ) -> UploadResponse:
-    document = service.upload_pdf(file, user_id=current_user.id)
+    priority = TaskPriority.PREMIUM if current_user.is_subscriber else TaskPriority.STANDARD
+    document = service.upload_pdf(file, user_id=current_user.id, priority=priority)
     return UploadResponse(document_id=document.id, status=document.status.value)
 
 
@@ -57,7 +54,8 @@ async def submit_document_url(
     current_user: UserContext = Depends(get_current_user),
     service: DocumentService = Depends(get_document_service),
 ) -> UploadResponse:
-    document = service.submit_url(payload.url, user_id=current_user.id)
+    priority = TaskPriority.PREMIUM if current_user.is_subscriber else TaskPriority.STANDARD
+    document = service.submit_url(payload.url, user_id=current_user.id, priority=priority)
     return UploadResponse(document_id=document.id, status=document.status.value)
 
 
@@ -86,4 +84,18 @@ async def delete_document(
 ) -> Response:
     service.delete_document(document_id=document_id, user_id=current_user.id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get("/{document_id}/status", response_model=DocumentStatusResponse)
+async def get_document_status(
+    document_id: str,
+    current_user: UserContext = Depends(get_current_user),
+    service: DocumentService = Depends(get_document_service),
+):
+    status_payload = service.get_document_status(document_id=document_id, user_id=current_user.id)
+    return DocumentStatusResponse(
+        document_id=status_payload["document_id"],
+        status=status_payload["status"].value if hasattr(status_payload["status"], "value") else status_payload["status"],
+        error_message=status_payload["error_message"],
+    )
 
