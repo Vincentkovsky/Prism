@@ -118,13 +118,21 @@ class EmbeddingService:
             )
 
     def delete_document_vectors(self, document_id: str, user_id: str) -> None:
-        self.collection.delete(
-            where={
-                "document_id": {"$eq": document_id},
-                "user_id": {"$eq": user_id},
-            }
-        )
-        self.logger.info("Deleted document vectors", extra={"document_id": document_id, "user_id": user_id})
+        try:
+            self.collection.delete(
+                where={
+                    "$and": [
+                        {"document_id": {"$eq": document_id}},
+                        {"user_id": {"$eq": user_id}},
+                    ]
+                }
+            )
+            self.logger.info("Deleted document vectors", extra={"document_id": document_id, "user_id": user_id})
+        except Exception as e:
+            self.logger.warning(
+                "Failed to delete document vectors (may not exist)",
+                extra={"document_id": document_id, "user_id": user_id, "error": str(e)},
+            )
 
     def _log_batch(self, document_id: str, user_id: str, ids: List[str], metadatas: List[Dict[str, str]]) -> None:
         if not self.log_dir:

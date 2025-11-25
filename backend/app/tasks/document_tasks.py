@@ -65,7 +65,8 @@ TASK_SLA_SECONDS = {
 
 def get_document_repository() -> DocumentRepository:
     current_settings = get_settings()
-    return create_document_repository(current_settings)
+    # Use service role for background tasks to bypass RLS
+    return create_document_repository(current_settings, use_service_role=True)
 
 
 @lru_cache(maxsize=1)

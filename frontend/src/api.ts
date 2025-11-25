@@ -81,6 +81,10 @@ export const listDocuments = () => {
   return api.get<DocumentRecord[]>('/documents')
 }
 
+export const deleteDocument = (documentId: string) => {
+  return api.delete(`/documents/${documentId}`)
+}
+
 export const qaQuery = (documentId: string, question: string, model: string = 'mini') => {
   return api.post('/qa/query', { document_id: documentId, question, model })
 }

@@ -16,13 +16,14 @@ if total > 0:
     # 列出前 5 条 embedding 及其 metadata
     records = collection.get(
         include=["metadatas", "documents", "embeddings"],
-        limit=5,
+        # limit=5,
     )
     for idx, doc_id in enumerate(records["ids"]):
         print(f"\nID: {doc_id}")
         print("metadata:", records["metadatas"][idx])
-        print("text snippet:", records["documents"][idx][:120])
-        print("embedding dim:", len(records["embeddings"][idx]))
         print("-" * 40)
+        print("text snippet:", records["documents"][idx])
+        # print("embedding dim:", len(records["embeddings"][idx]))
+        print("-" * 100)
 else:
     print("No embeddings found in the collection.")

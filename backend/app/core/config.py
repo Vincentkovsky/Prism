@@ -30,6 +30,10 @@ class Settings(BaseSettings):
         default=None,
         validation_alias=AliasChoices("VITE_SUPABASE_ANON_KEY", "SUPABASE_ANON_KEY"),
     )
+    supabase_service_role_key: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("SUPABASE_SERVICE_ROLE_KEY"),
+    )
 
     # OpenAI / Gemini
     openai_api_key: Optional[str] = None

@@ -66,15 +66,15 @@ class DocumentService:
             )
             with self._repo_token(access_token):
                 self.repo.create(document)
-                if self.settings.document_pipeline_enabled:
-                    enqueue_parse_document(
-                        document_id=document_id,
-                        user_id=user_id,
-                        priority=priority,
-                        sku="document_upload_pdf",
-                    )
-                else:
-                    self.repo.mark_status(document_id, DocumentStatus.completed)
+            if self.settings.document_pipeline_enabled:
+                enqueue_parse_document(
+                    document_id=document_id,
+                    user_id=user_id,
+                    priority=priority,
+                    sku="document_upload_pdf",
+                )
+            else:
+                self.repo.mark_status(document_id, DocumentStatus.completed)
                 self.logger.info(
                     "Document upload scheduled",
                     extra={
@@ -84,7 +84,7 @@ class DocumentService:
                         "pipeline_enabled": self.settings.document_pipeline_enabled,
                     },
                 )
-                return document
+            return document
         except Exception as exc:
             if not getattr(exc, "credits_refunded", False):
                 self.subscription.refund_credits(user_id, "document_upload_pdf", reason="upload_failed")
@@ -117,16 +117,16 @@ class DocumentService:
             )
             with self._repo_token(access_token):
                 self.repo.create(document)
-                if self.settings.document_pipeline_enabled:
-                    enqueue_parse_document(
-                        document_id=document_id,
-                        user_id=user_id,
-                        source_url=url,
-                        priority=priority,
-                        sku="document_upload_url",
-                    )
-                else:
-                    self.repo.mark_status(document_id, DocumentStatus.completed)
+            if self.settings.document_pipeline_enabled:
+                enqueue_parse_document(
+                    document_id=document_id,
+                    user_id=user_id,
+                    source_url=url,
+                    priority=priority,
+                    sku="document_upload_url",
+                )
+            else:
+                self.repo.mark_status(document_id, DocumentStatus.completed)
                 self.logger.info(
                     "URL submitted for processing",
                     extra={
@@ -136,7 +136,7 @@ class DocumentService:
                         "priority": priority.value,
                     },
                 )
-                return document
+            return document
         except Exception as exc:
             if not getattr(exc, "credits_refunded", False):
                 self.subscription.refund_credits(user_id, "document_upload_url", reason="upload_failed")
@@ -168,22 +168,42 @@ class DocumentService:
     def delete_document(self, document_id: str, user_id: str, access_token: Optional[str] = None) -> None:
         bind_document_context(document_id)
         document = self.get_document(document_id, user_id, access_token=access_token)
+        
+        self.logger.info("Deleting document", extra={"document_id": document_id, "user_id": user_id})
+        
+        # Delete storage file if exists
         if document.storage_path:
-            path = Path(document.storage_path)
-            path.unlink(missing_ok=True)
+            try:
+                path = Path(document.storage_path)
+                path.unlink(missing_ok=True)
+            except Exception as e:
+                self.logger.warning(f"Failed to delete storage file: {e}")
 
-        chunks_path = self._chunks_path(document_id)
-        chunks_path.unlink(missing_ok=True)
+        # Delete chunks file if exists
+        try:
+            chunks_path = self._chunks_path(document_id)
+            chunks_path.unlink(missing_ok=True)
+        except Exception as e:
+            self.logger.warning(f"Failed to delete chunks file: {e}")
 
+        # Delete from database
         with self._repo_token(access_token):
             self.repo.delete(document_id)
 
-        self.logger.info("Deleting document", extra={"document_id": document_id, "user_id": user_id})
-        embedder = self._get_embedder()
-        embedder.delete_document_vectors(document_id=document_id, user_id=user_id)
+        # Delete vectors (non-blocking)
+        try:
+            embedder = self._get_embedder()
+            embedder.delete_document_vectors(document_id=document_id, user_id=user_id)
+        except Exception as e:
+            self.logger.warning(f"Failed to delete vectors: {e}")
+        
+        # Refund credits
         sku = "document_upload_pdf" if document.source_type == DocumentSource.pdf else "document_upload_url"
         if sku in CREDIT_PRICING:
-            self.subscription.refund_credits(user_id, sku, reason="document_deleted")
+            try:
+                self.subscription.refund_credits(user_id, sku, reason="document_deleted")
+            except Exception as e:
+                self.logger.warning(f"Failed to refund credits: {e}")
 
     def _build_storage_path(self, user_id: str, document_id: str, suffix: str) -> Path:
         base: Path = self.settings.storage_base_path

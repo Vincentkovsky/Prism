@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import type { DocumentRecord } from '../api'
-import { listDocuments } from '../api'
+import { listDocuments, deleteDocument } from '../api'
 
 const props = defineProps<{
   isAuthenticated: boolean
@@ -33,6 +33,31 @@ const fetchDocuments = async () => {
 
 const handleSelect = (row: DocumentRecord) => {
   emit('document-selected', row.id)
+}
+
+const handleDelete = async (row: DocumentRecord) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除文档 "${row.source_value || row.id}" 吗？此操作不可恢复。`,
+      '删除确认',
+      {
+        confirmButtonText: '确定删除',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }
+    )
+    
+    loading.value = true
+    await deleteDocument(row.id)
+    ElMessage.success('文档删除成功')
+    await fetchDocuments()
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      ElMessage.error(error.response?.data?.detail || '删除文档失败')
+    }
+  } finally {
+    loading.value = false
+  }
 }
 
 watch(
@@ -94,9 +119,12 @@ defineExpose({
             {{ row.created_at ? new Date(row.created_at).toLocaleString() : '-' }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="140">
+        <el-table-column label="操作" width="200" align="center">
           <template #default="{ row }">
-            <el-button size="small" type="primary" plain @click.stop="handleSelect(row)">前往 Q&A</el-button>
+            <div class="action-buttons">
+              <el-button size="small" type="primary" plain @click.stop="handleSelect(row)">前往 Q&A</el-button>
+              <el-button size="small" type="danger" plain @click.stop="handleDelete(row)">删除</el-button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -142,6 +170,12 @@ defineExpose({
 .doc-name {
   font-weight: 500;
   color: #303133;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
 }
 </style>
 

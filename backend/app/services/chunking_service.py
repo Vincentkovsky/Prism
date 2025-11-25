@@ -34,12 +34,17 @@ try:
 except Exception:  # pragma: no cover
     OpenAI = None  # type: ignore
 
-DEFAULT_CHUNK_SIZE = 1_000  # tokens
-DEFAULT_CHUNK_OVERLAP = 100
+DEFAULT_CHUNK_SIZE = 800  # tokens (reduced for better embedding model compatibility)
+DEFAULT_CHUNK_OVERLAP = 150  # increased overlap for better context preservation
 
 SECTION_HEADING_PATTERN = re.compile(
     r"^(?P<heading>(#+|\d+(\.\d+)*))\s*(?P<title>.+)$"
 )
+
+# Patterns for cleaning PDF artifacts
+PAGE_NUMBER_PATTERN = re.compile(r'\n\s*\d{1,3}\s*$')  # Trailing page numbers
+HEADER_FOOTER_PATTERN = re.compile(r'^[\s\d\-–—]+$', re.MULTILINE)  # Standalone numbers/dashes
+MULTIPLE_NEWLINES = re.compile(r'\n{3,}')  # Excessive newlines
 
 
 @dataclass
@@ -73,25 +78,37 @@ class StructuredChunker:
     # --------------------- Parsing ---------------------
 
     def parse_pdf(self, pdf_path: Path) -> List[Dict]:
-        if partition_pdf:
-            elements = partition_pdf(filename=str(pdf_path), strategy="hi_res")
-            return [self._element_to_dict(element) for element in elements]
+        if not partition_pdf:
+            raise ImportError("Please install 'unstructured[pdf]' to parse PDFs.")
+        
         try:
-            import pypdf
-            reader = pypdf.PdfReader(pdf_path)
-            text = "\n".join([page.extract_text() for page in reader.pages])
-            return self.parse_plain_text(text)
-        except ImportError:
-            raise ImportError("Please install 'unstructured' or 'pypdf' to parse PDFs.")
-        except Exception as exc:  # pragma: no cover
-            logging.getLogger(__name__).warning(
-                "Failed to parse PDF with parsers, falling back to raw text: %s",
-                pdf_path,
-                exc_info=exc,
+            elements = partition_pdf(
+                filename=str(pdf_path),
+                strategy="hi_res",
+                infer_table_structure=True,
+                model_name="yolox",
             )
-            raw_bytes = pdf_path.read_bytes()
-            text = raw_bytes.decode("utf-8", errors="ignore")
-            return self.parse_plain_text(text)
+            
+            cleaned_results = []
+            for element in elements:
+                # Skip headers and footers (page numbers, etc.)
+                if element.category in ["Footer", "Header"]:
+                    continue
+                
+                item_dict = self._element_to_dict(element)
+                
+                # For tables, use HTML structure if available (better for LLM)
+                if element.category == "Table" and hasattr(element.metadata, 'text_as_html') and element.metadata.text_as_html:
+                    item_dict['text'] = element.metadata.text_as_html
+                
+                cleaned_results.append(item_dict)
+            
+            return cleaned_results
+        except Exception as exc:
+            logging.getLogger(__name__).exception(
+                "Failed to parse PDF with unstructured: %s", pdf_path
+            )
+            raise
 
             
     def parse_html(self, html_content: str) -> List[Dict]:
@@ -101,6 +118,8 @@ class StructuredChunker:
         return self.parse_plain_text(html_content)
 
     def parse_plain_text(self, text: str) -> List[Dict]:
+        # Clean PDF artifacts before parsing
+        text = self._clean_pdf_artifacts(text)
         lines = text.splitlines()
         return [
             {
@@ -111,6 +130,18 @@ class StructuredChunker:
             for line in lines
             if line.strip()
         ]
+
+    def _clean_pdf_artifacts(self, text: str) -> str:
+        """Remove common PDF extraction artifacts like page numbers, headers/footers."""
+        # Remove trailing page numbers (e.g., "\n\n1", "\n  3")
+        text = PAGE_NUMBER_PATTERN.sub('', text)
+        # Remove lines that are just numbers/dashes (likely headers/footers)
+        text = HEADER_FOOTER_PATTERN.sub('', text)
+        # Normalize excessive newlines
+        text = MULTIPLE_NEWLINES.sub('\n\n', text)
+        # Remove isolated single digits at paragraph boundaries
+        text = re.sub(r'\n\n\s*(\d{1,2})\s*\n\n', '\n\n', text)
+        return text.strip()
 
     # --------------------- Section building ---------------------
 
@@ -209,33 +240,155 @@ class StructuredChunker:
     def _split_text(self, text: str) -> List[str]:
         if not text:
             return []
+        
+        # First, try semantic splitting by paragraphs
+        paragraphs = self._split_by_semantic_boundaries(text)
+        
         if not self.tokenizer:  # pragma: no cover
-            if len(text) <= self.chunk_size:
-                return [text]
-            chunks: List[str] = []
+            return self._merge_small_chunks(paragraphs, self.chunk_size, self.chunk_overlap, char_mode=True)
+
+        return self._merge_small_chunks(paragraphs, self.chunk_size, self.chunk_overlap, char_mode=False)
+
+    def _split_by_semantic_boundaries(self, text: str) -> List[str]:
+        """Split text at semantic boundaries (paragraphs, code blocks, formulas)."""
+        # Preserve code blocks as single units
+        code_block_pattern = re.compile(r'(```[\s\S]*?```|`[^`]+`)', re.MULTILINE)
+        
+        # Split by double newlines (paragraphs) while preserving code blocks
+        parts = []
+        last_end = 0
+        
+        for match in code_block_pattern.finditer(text):
+            # Add text before code block
+            before = text[last_end:match.start()]
+            if before.strip():
+                parts.extend([p.strip() for p in before.split('\n\n') if p.strip()])
+            # Add code block as single unit
+            parts.append(match.group(0))
+            last_end = match.end()
+        
+        # Add remaining text
+        remaining = text[last_end:]
+        if remaining.strip():
+            parts.extend([p.strip() for p in remaining.split('\n\n') if p.strip()])
+        
+        return parts if parts else [text]
+
+    def _merge_small_chunks(
+        self, 
+        paragraphs: List[str], 
+        max_size: int, 
+        overlap: int,
+        char_mode: bool = False
+    ) -> List[str]:
+        """Merge small paragraphs into chunks while respecting size limits."""
+        if not paragraphs:
+            return []
+        
+        def get_size(text: str) -> int:
+            if char_mode or not self.tokenizer:
+                return len(text)
+            return len(self.tokenizer.encode(text))
+        
+        chunks: List[str] = []
+        current_chunk: List[str] = []
+        current_size = 0
+        
+        for para in paragraphs:
+            para_size = get_size(para)
+            
+            # If single paragraph exceeds max size, split it further
+            if para_size > max_size:
+                # Flush current chunk first
+                if current_chunk:
+                    chunks.append('\n\n'.join(current_chunk))
+                    current_chunk = []
+                    current_size = 0
+                
+                # Split large paragraph by tokens
+                sub_chunks = self._split_large_paragraph(para, max_size, overlap, char_mode)
+                chunks.extend(sub_chunks)
+                continue
+            
+            # Check if adding this paragraph exceeds limit
+            separator_size = get_size('\n\n') if current_chunk else 0
+            if current_size + separator_size + para_size > max_size:
+                # Save current chunk
+                if current_chunk:
+                    chunks.append('\n\n'.join(current_chunk))
+                
+                # Start new chunk with overlap from previous
+                if overlap > 0 and current_chunk:
+                    # Include last paragraph(s) as overlap context
+                    overlap_paras = self._get_overlap_context(current_chunk, overlap, char_mode)
+                    current_chunk = overlap_paras + [para]
+                    current_size = get_size('\n\n'.join(current_chunk))
+                else:
+                    current_chunk = [para]
+                    current_size = para_size
+            else:
+                current_chunk.append(para)
+                current_size += separator_size + para_size
+        
+        # Don't forget the last chunk
+        if current_chunk:
+            chunks.append('\n\n'.join(current_chunk))
+        
+        return chunks
+
+    def _split_large_paragraph(
+        self, 
+        text: str, 
+        max_size: int, 
+        overlap: int,
+        char_mode: bool
+    ) -> List[str]:
+        """Split a large paragraph that exceeds max_size."""
+        if char_mode or not self.tokenizer:
+            chunks = []
             start = 0
-            overlap = self.chunk_overlap
             while start < len(text):
-                end = min(len(text), start + self.chunk_size)
+                end = min(len(text), start + max_size)
                 chunks.append(text[start:end])
                 if end == len(text):
                     break
                 start = max(0, end - overlap)
             return chunks
-
+        
         token_ids = self.tokenizer.encode(text)
-        if len(token_ids) <= self.chunk_size:
-            return [text]
-
-        chunks: List[str] = []
-        step = max(1, self.chunk_size - self.chunk_overlap)
+        chunks = []
+        step = max(1, max_size - overlap)
         for start in range(0, len(token_ids), step):
-            end = min(len(token_ids), start + self.chunk_size)
+            end = min(len(token_ids), start + max_size)
             chunk_ids = token_ids[start:end]
             chunks.append(self.tokenizer.decode(chunk_ids))
             if end == len(token_ids):
                 break
         return chunks
+
+    def _get_overlap_context(
+        self, 
+        paragraphs: List[str], 
+        target_overlap: int,
+        char_mode: bool
+    ) -> List[str]:
+        """Get paragraphs from the end to use as overlap context."""
+        def get_size(text: str) -> int:
+            if char_mode or not self.tokenizer:
+                return len(text)
+            return len(self.tokenizer.encode(text))
+        
+        overlap_paras = []
+        total_size = 0
+        
+        for para in reversed(paragraphs):
+            para_size = get_size(para)
+            if total_size + para_size > target_overlap:
+                break
+            overlap_paras.insert(0, para)
+            total_size += para_size
+        
+        return overlap_paras
 
     def _count_tokens(self, text: str) -> int:
         if not self.tokenizer:  # pragma: no cover
@@ -268,7 +421,8 @@ class StructuredChunker:
         if not table_tag:
             return table_element.get("text", "")
         try:
-            df_list = pd.read_html(str(table_tag))
+            from io import StringIO
+            df_list = pd.read_html(StringIO(str(table_tag)))
         except ValueError:
             return table_element.get("text", "")
         if not df_list:

@@ -12,7 +12,7 @@ except ImportError:  # pragma: no cover
     Client = Any  # type: ignore
 
 from ..core.config import Settings
-from ..core.supabase_client import get_supabase_client
+from ..core.supabase_client import get_supabase_client, get_supabase_service_client
 from ..models.document import Document, DocumentSource, DocumentStatus
 
 
@@ -169,10 +169,13 @@ class SupabaseDocumentRepository(DocumentRepository):
         )
 
 
-def create_document_repository(settings: Settings) -> DocumentRepository:
+def create_document_repository(settings: Settings, use_service_role: bool = False) -> DocumentRepository:
     if settings.supabase_url and settings.supabase_anon_key:
         try:
-            client = get_supabase_client()
+            if use_service_role and settings.supabase_service_role_key:
+                client = get_supabase_service_client()
+            else:
+                client = get_supabase_client()
             return SupabaseDocumentRepository(client)
         except RuntimeError:
             logging.getLogger(__name__).warning(

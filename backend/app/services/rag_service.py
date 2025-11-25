@@ -216,10 +216,24 @@ class RAGService:
             section_groups.setdefault(section, []).append(chunk)
 
         scores: List[tuple[str, float]] = []
+        # Core sections that should be prioritized
+        CORE_SECTIONS = ["Abstract", "Introduction", "Conclusion", "摘要", "引言", "结论"]
+
         for section, section_chunks in section_groups.items():
+            # 1. Base score from average distance
             avg_distance = sum(c["distance"] for c in section_chunks) / len(section_chunks)
+            score = avg_distance
+
+            # 2. Boost core sections by 30% (lower distance = higher rank)
+            if any(core in section for core in CORE_SECTIONS):
+                score *= 0.7
+
+            # 3. Only boost tables if question explicitly asks about them
             has_table = any(c["metadata"].get("element_type") == "table" for c in section_chunks)
-            score = avg_distance * (0.9 if has_table else 1.0)
+            if "表格" in question or "table" in question.lower():
+                if has_table:
+                    score *= 0.8
+
             scores.append((section, score))
 
         scores.sort(key=lambda item: item[1])
@@ -285,17 +299,25 @@ class RAGService:
                 self._init_gemini()
             response = self._gemini_client.models.generate_content(
                 model=model_name,
-                contents=[
-                    {"role": "user", "parts": [prompt]},
-                ],
+                contents=prompt,  # v1 SDK expects string directly
                 config=genai_types.GenerateContentConfig(
                     temperature=temp,
                     max_output_tokens=800,
                 ),
             )
-            content = getattr(response, "text", "") or (
-                response.candidates[0].content.parts[0].text if response.candidates else ""
-            )
+            # Safely extract text from response
+            content = ""
+            if hasattr(response, "text") and response.text:
+                content = response.text
+            elif response.candidates and len(response.candidates) > 0:
+                candidate = response.candidates[0]
+                if hasattr(candidate, "content") and candidate.content:
+                    if hasattr(candidate.content, "parts") and candidate.content.parts:
+                        if len(candidate.content.parts) > 0:
+                            content = candidate.content.parts[0].text
+            
+            if not content:
+                content = self.FALLBACK_ANSWER
             self.logger.info(
                 "Gemini completion finished",
                 extra={"model": model_name, "duration_ms": round((time.perf_counter() - start) * 1000, 2)},

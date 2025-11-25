@@ -22,3 +22,13 @@ def get_supabase_client() -> Client:
         raise RuntimeError("Supabase SDK is not installed. Install supabase==2.24.0 to enable this feature.")
     return create_client(str(settings.supabase_url), settings.supabase_anon_key)
 
+
+def get_supabase_service_client() -> Client:
+    """Get a Supabase client with service role key (bypasses RLS)."""
+    settings = get_settings()
+    if not settings.supabase_url or not settings.supabase_service_role_key:
+        raise RuntimeError("Supabase service role configuration missing. Set SUPABASE_SERVICE_ROLE_KEY.")
+    if create_client is None:  # pragma: no cover
+        raise RuntimeError("Supabase SDK is not installed. Install supabase==2.24.0 to enable this feature.")
+    return create_client(str(settings.supabase_url), settings.supabase_service_role_key)
+
