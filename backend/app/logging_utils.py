@@ -146,6 +146,8 @@ def setup_logging(settings: Settings) -> None:
     app_handlers: list[str]
     if env == "development":
         app_handlers = ["console", "error_metrics"]
+        if settings.enable_file_logging:
+            app_handlers.append("file")
         config["root"]["handlers"] = ["console"]
     else:
         app_handlers = ["json", "error_metrics"]

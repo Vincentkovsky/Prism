@@ -245,7 +245,7 @@ class RAGService:
 
         return reranked
 
-    def build_context(self, chunks: List[Dict], max_tokens: int = 2000) -> str:
+    def build_context(self, chunks: List[Dict], max_tokens: int = 20000) -> str:
         context_parts: List[str] = []
         total = 0
         for chunk in chunks:
@@ -286,11 +286,15 @@ class RAGService:
         temp = temperature if temperature is not None else self.MODEL_TEMPERATURE[model_key]
 
         prompt = (
-            "你是一名专业的区块链白皮书分析助手。"
-            "请仅根据提供的上下文回答用户的问题，无法回答时明确说明。"
-            "\n\n上下文:\n"
-            f"{context}\n\n"
-            f"问题: {question}\n\n回答:"
+            "你是比特币白皮书专家。请仔细阅读上下文，提取关键信息回答问题。\n\n"
+            "规则：\n"
+            "- 答案一定在上下文中，请仔细寻找\n"
+            "- 用中文简洁回答，2-3句话即可\n"
+            "- 直接给出答案，不要说'根据上下文'等废话\n"
+            "- 绝对禁止说'找不到'、'无法回答'、'抱歉'\n\n"
+            f"上下文：\n{context}\n\n"
+            f"问题：{question}\n\n"
+            "答案："
         )
 
         start = time.perf_counter()
