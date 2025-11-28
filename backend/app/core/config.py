@@ -63,6 +63,10 @@ class Settings(BaseSettings):
     chroma_collection: str = "documents"
     vector_log_dir: Optional[Path] = Path("backend/app/storage/vector_logs")
 
+    # Web Search APIs
+    tavily_api_key: Optional[str] = None
+    serpapi_key: Optional[str] = None
+
     # Feature flags
     run_tasks_inline: bool = True
     document_pipeline_enabled: bool = True
