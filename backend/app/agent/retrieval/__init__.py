@@ -30,6 +30,10 @@ from backend.app.agent.retrieval.index_manager import (
     DeleteResult,
     VectorStoreProtocol,
 )
+from backend.app.agent.retrieval.hybrid_retriever import (
+    HybridRetriever,
+    RetrievalResult,
+)
 
 __all__ = [
     "tokenize",
@@ -44,4 +48,6 @@ __all__ = [
     "IndexResult",
     "DeleteResult",
     "VectorStoreProtocol",
+    "HybridRetriever",
+    "RetrievalResult",
 ]

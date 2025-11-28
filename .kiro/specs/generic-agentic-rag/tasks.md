@@ -80,46 +80,46 @@
     - Optionally auto-fix inconsistencies
     - _Requirements: 6.2_
 
-- [ ] 5. Implement Hybrid Retriever
-  - [ ] 5.1 Create HybridRetriever class
+- [x] 5. Implement Hybrid Retriever
+  - [x] 5.1 Create HybridRetriever class
     - Create `backend/app/agent/retrieval/hybrid_retriever.py`
     - Implement vector search using existing ChromaDB
     - Implement BM25 search using BM25Service
     - _Requirements: 6.1, 6.2_
-  - [ ] 5.2 Implement RRF fusion algorithm
+  - [x] 5.2 Implement RRF fusion algorithm
     - Implement _rrf_fusion() method
     - Support configurable vector_weight and bm25_weight
     - Default weights: 0.7 vector, 0.3 BM25
     - _Requirements: 6.3, 6.4_
-  - [ ] 5.3 Write property test for hybrid search fusion
+  - [x] 5.3 Write property test for hybrid search fusion
     - **Property 15: Hybrid Search Fusion**
     - **Validates: Requirements 6.1, 6.2, 6.3**
-  - [ ] 5.4 Write property test for search weight configuration
+  - [x] 5.4 Write property test for search weight configuration
     - **Property 16: Search Weight Configuration**
     - **Validates: Requirements 6.4**
 
-- [ ] 6. Checkpoint - Ensure all tests pass
+- [x] 6. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 ## Phase 4: Intent Router
 
-- [ ] 7. Implement Intent Router
-  - [ ] 7.1 Create IntentRouter class
+- [x] 7. Implement Intent Router
+  - [x] 7.1 Create IntentRouter class
     - Create `backend/app/agent/router.py`
     - Implement classify() method using LLM
     - Add confidence threshold (0.8) for fallback mechanism
     - _Requirements: 2.6_
-  - [ ] 7.2 Implement small-talk detection
+  - [x] 7.2 Implement small-talk detection
     - Create pattern matching for common greetings
     - Add LLM-based classification for ambiguous cases
     - _Requirements: 2.6_
-  - [ ] 7.3 Write property test for router small-talk bypass
+  - [x] 7.3 Write property test for router small-talk bypass
     - **Property 6: Router Small-Talk Bypass**
     - **Validates: Requirements 2.6**
 
 ## Phase 5: ReAct Agent
 
-- [ ] 8. Implement ReAct Agent core
+- [-] 8. Implement ReAct Agent core
   - [ ] 8.1 Create ReActAgent class
     - Create `backend/app/agent/react_agent.py`
     - Implement reasoning loop with tool calling

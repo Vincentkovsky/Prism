@@ -18,6 +18,7 @@ from backend.app.agent.types import (
     AgentStreamEvent,
     ThoughtStep,
 )
+from backend.app.agent.router import IntentRouter
 
 __all__ = [
     "IntentType",
@@ -27,4 +28,5 @@ __all__ = [
     "AgentResponse",
     "AgentStreamEvent",
     "ThoughtStep",
+    "IntentRouter",
 ]
