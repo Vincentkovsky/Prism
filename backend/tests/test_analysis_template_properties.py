@@ -128,3 +128,84 @@ def test_yaml_serialization_round_trip(template: AnalysisTemplate):
     
     # Verify equivalence
     assert restored == template, f"YAML round-trip failed: {template} != {restored}"
+
+
+# Import registry for lifecycle tests
+from backend.app.agent.templates.registry import TemplateRegistry
+
+
+@settings(max_examples=100)
+@given(template=analysis_template_strategy())
+def test_template_registry_lifecycle(template: AnalysisTemplate):
+    """
+    **Feature: generic-agentic-rag, Property 13: Analysis Template Lifecycle**
+    
+    For any valid AnalysisTemplate, registering it SHALL make it retrievable 
+    by name, and the retrieved template SHALL be equivalent to the original.
+    
+    **Validates: Requirements 5.1, 5.2**
+    """
+    # Create a fresh registry for each test
+    registry = TemplateRegistry()
+    
+    # Register the template
+    registry.register(template)
+    
+    # Retrieve by name
+    retrieved = registry.get(template.name)
+    
+    # Verify retrieval succeeded
+    assert retrieved is not None, f"Template '{template.name}' not found after registration"
+    
+    # Verify equivalence
+    assert retrieved == template, f"Retrieved template differs from original: {retrieved} != {template}"
+
+
+@settings(max_examples=100)
+@given(template=analysis_template_strategy())
+def test_template_registry_list_contains_registered(template: AnalysisTemplate):
+    """
+    **Feature: generic-agentic-rag, Property 13: Analysis Template Lifecycle**
+    
+    For any valid AnalysisTemplate, after registration, list_templates() 
+    SHALL include the registered template.
+    
+    **Validates: Requirements 5.1, 5.2**
+    """
+    registry = TemplateRegistry()
+    
+    # Register the template
+    registry.register(template)
+    
+    # List all templates
+    all_templates = registry.list_templates()
+    
+    # Verify the template is in the list
+    assert template in all_templates, f"Template '{template.name}' not in list after registration"
+
+
+@settings(max_examples=100)
+@given(template=analysis_template_strategy())
+def test_template_registry_unregister(template: AnalysisTemplate):
+    """
+    **Feature: generic-agentic-rag, Property 13: Analysis Template Lifecycle**
+    
+    For any valid AnalysisTemplate, after registration and unregistration,
+    the template SHALL no longer be retrievable by name.
+    
+    **Validates: Requirements 5.1, 5.2**
+    """
+    registry = TemplateRegistry()
+    
+    # Register the template
+    registry.register(template)
+    
+    # Verify it's registered
+    assert registry.get(template.name) is not None
+    
+    # Unregister
+    result = registry.unregister(template.name)
+    assert result is True, "Unregister should return True for existing template"
+    
+    # Verify it's no longer retrievable
+    assert registry.get(template.name) is None, f"Template '{template.name}' still found after unregistration"

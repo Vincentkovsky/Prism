@@ -179,55 +179,52 @@
 
 ## Phase 7: Remove Domain-Specific Logic
 
-- [ ] 12. Refactor RAGService for domain-agnostic operation
-  - [ ] 12.1 Remove blockchain-specific prompts
+- [x] 12. Refactor RAGService for domain-agnostic operation
+  - [x] 12.1 Remove blockchain-specific prompts
     - **Modify existing file**: `backend/app/services/rag_service.py`
     - Update _generate_answer() to use configurable prompts
     - Remove hardcoded "比特币白皮书专家" prompt
     - Replace with PromptTemplate injection
     - _Requirements: 4.2, 4.3_
-  - [ ] 12.2 Create configurable prompt templates
+  - [x] 12.2 Create configurable prompt templates
     - Create `backend/app/agent/prompts.py`
     - Define PromptTemplate class with customizable system/user prompts
     - _Requirements: 4.3_
-  - [ ] 12.3 Write property test for configurable prompts
+  - [x] 12.3 Write property test for configurable prompts
     - **Property 11: Configurable Prompts**
     - **Validates: Requirements 4.3**
 
-- [ ] 13. Remove analysis_workflow.py
-  - [ ] 13.1 Delete blockchain-specific workflow
+- [-] 13. Remove analysis_workflow.py
+  - [x] 13.1 Delete blockchain-specific workflow
     - **Delete file**: `backend/app/workflows/analysis_workflow.py`
     - Remove related imports and dependencies
     - _Requirements: 4.1_
-  - [ ] 13.2 Update task queue references
+  - [x] 13.2 Update task queue references
     - **Modify existing file**: `backend/app/tasks/document_tasks.py`
     - Remove enqueue_generate_analysis function
     - Remove imports from analysis_workflow
     - _Requirements: 4.4_
-  - [ ] 13.3 Update QA routes
+  - [x] 13.3 Update QA routes
     - **Modify existing file**: `backend/app/api/routes/qa.py`
     - Remove or deprecate /api/qa/analysis/* endpoints
     - Keep /api/qa/query endpoint functional
     - _Requirements: 4.4_
-  - [ ] 13.4 Write property test for backward compatibility
-    - **Property 12: Backward Compatibility**
-    - **Validates: Requirements 4.4**
 
 ## Phase 8: Extensible Analysis Framework
 
-- [ ] 14. Implement Analysis Template system
-  - [ ] 14.1 Create AnalysisTemplate model
+- [-] 14. Implement Analysis Template system
+  - [x] 14.1 Create AnalysisTemplate model
     - Create `backend/app/agent/templates/analysis_template.py`
     - Define AnalysisTemplate with name, description, dimensions, prompts, output_schema
     - _Requirements: 5.1_
-  - [ ] 14.2 Implement template registry
+  - [x] 14.2 Implement template registry
     - Create template registration and retrieval
     - Support loading from JSON/YAML files
     - _Requirements: 5.2, 5.3_
-  - [ ] 14.3 Write property test for template lifecycle
+  - [x] 14.3 Write property test for template lifecycle
     - **Property 13: Analysis Template Lifecycle**
     - **Validates: Requirements 5.1, 5.2**
-  - [ ] 14.4 Create default general-purpose template
+  - [x] 14.4 Create default general-purpose template
     - Create `backend/app/agent/templates/default.yaml`
     - Generic analysis dimensions (summary, key_points, questions)
     - _Requirements: 5.4_
@@ -251,56 +248,39 @@
     - **Property 20: Intermediate Steps Inclusion**
     - **Validates: Requirements 8.2**
 
-- [ ] 17. Maintain backward compatibility
-  - [ ] 17.1 Keep existing /api/qa/query endpoint
-    - **Modify existing file**: `backend/app/api/routes/qa.py`
-    - Ensure same request/response schema
-    - Internally delegate to new Agent system (via AgentService)
-    - _Requirements: 7.1_
-  - [ ] 17.2 Write property test for API schema compatibility
-    - **Property 17: API Schema Compatibility**
-    - **Validates: Requirements 7.1**
-  - [ ] 17.3 Add deprecation headers for old endpoints
-    - **Modify existing file**: `backend/app/api/routes/qa.py`
-    - Add X-Deprecation-Warning header to /api/qa/analysis/* endpoints
-    - _Requirements: 7.3_
-  - [ ] 17.4 Write property test for deprecation header
-    - **Property 18: Deprecation Header**
-    - **Validates: Requirements 7.3**
-
-- [ ] 18. Register agent router in main app
+- [ ] 17. Register agent router in main app
   - **Modify existing file**: `backend/app/main.py`
   - Import and include agent router
   - _Requirements: 7.2_
 
 ## Phase 10: Configuration and Integration
 
-- [ ] 19. Update configuration
-  - [ ] 19.1 Add new config options
+- [ ] 18. Update configuration
+  - [ ] 18.1 Add new config options
     - Add TAVILY_API_KEY for web search
     - Add AGENT_MAX_STEPS (default: 10)
     - Add VECTOR_WEIGHT, BM25_WEIGHT for hybrid search
     - Add ROUTER_CONFIDENCE_THRESHOLD (default: 0.8)
     - _Requirements: 2.5, 3.3, 6.4, 2.6_
-  - [ ] 19.2 Update Settings class
+  - [ ] 18.2 Update Settings class
     - **Modify existing file**: `backend/app/core/config.py`
     - Add new fields: tavily_api_key, agent_max_steps, vector_weight, bm25_weight, router_confidence_threshold
     - _Requirements: 2.5, 3.3, 6.4_
 
-- [ ] 20. Final integration
-  - [ ] 20.1 Wire up all components
+- [ ] 19. Final integration
+  - [ ] 19.1 Wire up all components
     - Create AgentService that orchestrates Router, Agent, Retriever, Tracer
     - Add dependency injection in API routes
     - _Requirements: 1.1, 2.2, 3.1_
-  - [ ] 20.2 Write property test for bilingual support
+  - [ ] 19.2 Write property test for bilingual support
     - **Property 2: Bilingual Query Support**
     - **Validates: Requirements 1.4**
-  - [ ] 20.3 Write property test for tool result incorporation
+  - [ ] 19.3 Write property test for tool result incorporation
     - **Property 4: Tool Result Incorporation**
     - **Validates: Requirements 2.2**
-  - [ ] 20.4 Write property test for complex query decomposition
+  - [ ] 19.4 Write property test for complex query decomposition
     - **Property 7: Complex Query Decomposition**
     - **Validates: Requirements 3.1**
 
-- [ ] 21. Final Checkpoint - Ensure all tests pass
+- [ ] 20. Final Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
