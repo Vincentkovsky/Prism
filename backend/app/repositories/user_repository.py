@@ -54,3 +54,10 @@ class UserRepository:
         await self.session.flush()
         await self.session.refresh(user)
         return user
+
+    async def list_all(self) -> list[User]:
+        """List all users ordered by creation date"""
+        result = await self.session.execute(
+            select(User).order_by(User.created_at.desc())
+        )
+        return list(result.scalars().all())

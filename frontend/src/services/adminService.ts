@@ -29,7 +29,25 @@ export interface ChromaChunk {
     metadata: Record<string, any>;
 }
 
+export interface AdminUser {
+    id: string;
+    email: string;
+    name: string | null;
+    avatar_url: string | null;
+    google_id: string | null;
+    is_active: boolean;
+    is_superuser: boolean;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface UserUpdateData {
+    is_active?: boolean;
+    is_superuser?: boolean;
+}
+
 export const adminService = {
+    // ChromaDB
     listChromaDocuments: async (): Promise<ChromaDocument[]> => {
         const response = await api.get('/chroma/documents');
         return response.data;
@@ -37,6 +55,17 @@ export const adminService = {
 
     getChromaDocumentChunks: async (documentId: string): Promise<ChromaChunk[]> => {
         const response = await api.get(`/chroma/documents/${documentId}`);
+        return response.data;
+    },
+
+    // User Management
+    listUsers: async (): Promise<AdminUser[]> => {
+        const response = await api.get('/users');
+        return response.data;
+    },
+
+    updateUser: async (userId: string, data: UserUpdateData): Promise<AdminUser> => {
+        const response = await api.patch(`/users/${userId}`, data);
         return response.data;
     },
 };

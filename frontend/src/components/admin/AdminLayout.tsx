@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Database } from 'lucide-react';
+import { LayoutDashboard, Database, Users } from 'lucide-react';
 
 const AdminLayout: React.FC = () => {
     const location = useLocation();
@@ -9,9 +9,7 @@ const AdminLayout: React.FC = () => {
 
     const navItems = [
         { path: '/admin/chroma', label: 'Vector Store', icon: Database },
-        // Future items
-        // { path: '/admin/users', label: 'Users', icon: Users },
-        // { path: '/admin/settings', label: 'Settings', icon: Settings },
+        { path: '/admin/users', label: 'Users', icon: Users },
     ];
 
     return (

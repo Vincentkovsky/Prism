@@ -8,6 +8,7 @@ import ChatWorkbench from "./pages/ChatWorkbench";
 import authService from "./services/authService";
 import AdminLayout from './components/admin/AdminLayout';
 import ChromaViewer from './pages/admin/ChromaViewer';
+import UserManagement from './pages/admin/UserManagement';
 
 // Auth guard component
 function AuthGuard({ children }: { children: React.ReactNode }) {
@@ -77,9 +78,14 @@ export const router = createBrowserRouter([
                 element: <ChromaViewer />,
             },
             {
+                path: 'users',
+                element: <UserManagement />,
+            },
+            {
                 index: true,
                 element: <Navigate to="chroma" replace />,
             },
         ],
     },
 ]);
+
