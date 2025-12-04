@@ -87,10 +87,10 @@ export function UserMenu() {
 
   return (
     <div className="relative" ref={menuRef}>
-      {/* Avatar Button */}
+      {/* Avatar Button with Username */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 p-1 rounded-full hover:bg-[var(--bg-tertiary)] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+        className="flex items-center gap-2 px-2 py-1 rounded-full hover:bg-[var(--bg-tertiary)] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
         aria-expanded={isOpen}
         aria-haspopup="true"
       >
@@ -105,6 +105,12 @@ export function UserMenu() {
             {getInitials(user.name, user.email)}
           </div>
         )}
+        <span className="text-sm font-medium text-[var(--text-primary)] max-w-[120px] truncate hidden sm:block">
+          {user.name || user.email.split('@')[0]}
+        </span>
+        <svg className="w-4 h-4 text-[var(--text-secondary)] hidden sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
       </button>
 
       {/* Dropdown Menu */}

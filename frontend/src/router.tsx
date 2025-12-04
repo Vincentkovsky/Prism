@@ -47,7 +47,15 @@ export const router = createBrowserRouter([
                 ),
             },
             {
-                path: 'chat/:documentId',
+                path: 'chat',
+                element: (
+                    <AuthGuard>
+                        <ChatWorkbench />
+                    </AuthGuard>
+                ),
+            },
+            {
+                path: 'chat/:sessionId',
                 element: (
                     <AuthGuard>
                         <ChatWorkbench />
