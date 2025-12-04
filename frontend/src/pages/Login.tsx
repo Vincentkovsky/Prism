@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import authService from '../services/authService';
+import { useAuthStore } from '../stores/authStore';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -13,6 +14,7 @@ export default function Login() {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
+    const { login } = useAuthStore();
 
     const handleEmailLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -20,7 +22,21 @@ export default function Login() {
         setLoading(true);
 
         try {
-            await authService.login({ email, password });
+            // Login and get token
+            const tokenResponse = await authService.login({ email, password });
+
+            // Fetch user info with the new token
+            const userResponse = await authService.getCurrentUser();
+
+            // Update authStore with user and token
+            const user = {
+                id: userResponse.id,
+                email: userResponse.email,
+                name: userResponse.name,
+                avatarUrl: userResponse.avatar_url
+            };
+            login(user, tokenResponse.access_token);
+
             navigate('/');
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Login failed');

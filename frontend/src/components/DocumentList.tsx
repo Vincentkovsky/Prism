@@ -102,41 +102,50 @@ export function DocumentList({ onDocumentSelect, onDocumentDelete }: DocumentLis
   /**
    * Start polling for processing documents
    */
+  /**
+   * Manage polling lifecycle
+   * Reconciles active polls with document status
+   */
   useEffect(() => {
-    const processingDocs = documents.filter(
-      doc => doc.status === 'parsing' || doc.status === 'uploading'
+    const processingDocIds = new Set(
+      documents
+        .filter(doc => doc.status === 'parsing' || doc.status === 'uploading')
+        .map(doc => doc.id)
     );
 
-    // Start polling for each processing document
-    for (const doc of processingDocs) {
-      if (!pollingRef.current.has(doc.id)) {
-        const intervalId = setInterval(() => {
-          pollDocumentStatus(doc.id);
-        }, POLLING_INTERVAL);
-        pollingRef.current.set(doc.id, intervalId);
-
-        // Also poll immediately
-        pollDocumentStatus(doc.id);
-      }
-    }
-
-    // Clean up polling for documents that are no longer processing
+    // 1. Stop polling for documents that are no longer processing
     for (const [docId, intervalId] of pollingRef.current.entries()) {
-      const doc = documents.find(d => d.id === docId);
-      if (!doc || (doc.status !== 'parsing' && doc.status !== 'uploading')) {
+      if (!processingDocIds.has(docId)) {
         clearInterval(intervalId);
         pollingRef.current.delete(docId);
       }
     }
 
-    // Cleanup on unmount
+    // 2. Start polling for new processing documents
+    for (const docId of processingDocIds) {
+      if (!pollingRef.current.has(docId)) {
+        const intervalId = setInterval(() => {
+          pollDocumentStatus(docId);
+        }, POLLING_INTERVAL);
+        pollingRef.current.set(docId, intervalId);
+
+        // Also poll immediately
+        pollDocumentStatus(docId);
+      }
+    }
+  }, [documents, pollDocumentStatus]);
+
+  /**
+   * Cleanup on unmount
+   */
+  useEffect(() => {
     return () => {
       for (const intervalId of pollingRef.current.values()) {
         clearInterval(intervalId);
       }
       pollingRef.current.clear();
     };
-  }, [documents, pollDocumentStatus]);
+  }, []);
 
   const handleDocumentClick = (document: Document) => {
     setSelectedDocument(document.id);

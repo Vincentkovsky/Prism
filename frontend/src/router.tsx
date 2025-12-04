@@ -19,6 +19,18 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 
 export const router = createBrowserRouter([
     {
+        path: '/login',
+        element: <Login />,
+    },
+    {
+        path: '/register',
+        element: <Register />,
+    },
+    {
+        path: '/auth/callback',
+        element: <AuthCallback />,
+    },
+    {
         path: '/',
         element: <Layout />,
         children: [
@@ -41,18 +53,6 @@ export const router = createBrowserRouter([
                         <ChatWorkbench />
                     </AuthGuard>
                 ),
-            },
-            {
-                path: '/login',
-                element: <Login />,
-            },
-            {
-                path: '/register',
-                element: <Register />,
-            },
-            {
-                path: '/auth/callback',
-                element: <AuthCallback />,
             },
         ],
     },

@@ -39,15 +39,15 @@ export function UrlSubmit({ onSubmitComplete, onSubmitError }: UrlSubmitProps) {
    */
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const trimmedUrl = url.trim();
-    
+
     // Validate URL
     if (!trimmedUrl) {
       setError('Please enter a URL');
       return;
     }
-    
+
     if (!isValidUrl(trimmedUrl)) {
       setError('Please enter a valid URL (http:// or https://)');
       return;
@@ -57,7 +57,7 @@ export function UrlSubmit({ onSubmitComplete, onSubmitError }: UrlSubmitProps) {
     setIsSubmitting(true);
 
     try {
-      const response = await apiClient.post<Document>('/documents/from-url', {
+      const response = await apiClient.post<Document>('/documents/submit-url', {
         url: trimmedUrl,
       });
 
@@ -127,7 +127,7 @@ export function UrlSubmit({ onSubmitComplete, onSubmitError }: UrlSubmitProps) {
             aria-describedby={error ? 'url-error' : undefined}
           />
         </div>
-        
+
         <button
           type="submit"
           disabled={isSubmitting || !url.trim()}

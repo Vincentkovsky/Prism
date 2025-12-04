@@ -66,7 +66,7 @@ async def submit_url(
 ) -> UploadResponse:
     priority = TaskPriority.PREMIUM if current_user.is_subscriber else TaskPriority.STANDARD
     document = await service.submit_url(
-        payload.url,
+        str(payload.url),
         user_id=current_user.id,
         priority=priority,
     )

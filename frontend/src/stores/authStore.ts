@@ -19,7 +19,6 @@ interface AuthActions {
   refreshToken: (accessToken: string) => void;
   setLoading: (isLoading: boolean) => void;
   isAuthenticated: () => boolean;
-  initializeFromStorage: () => void;
 }
 
 type AuthStore = AuthState & AuthActions;
@@ -36,14 +35,6 @@ export const useAuthStore = create<AuthStore>()(
       isAuthenticated: () => {
         const state = get();
         return state.user !== null && state.accessToken !== null;
-      },
-
-      // Initialize from localStorage
-      initializeFromStorage: () => {
-        const token = localStorage.getItem('auth_token');
-        if (token) {
-          set({ accessToken: token });
-        }
       },
 
       // Actions
@@ -83,4 +74,3 @@ export const useAuthStore = create<AuthStore>()(
     }
   )
 );
-

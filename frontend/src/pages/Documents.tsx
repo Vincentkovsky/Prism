@@ -7,6 +7,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { DocumentList, DocumentUpload, UrlSubmit } from '../components';
 import { useDocumentStore } from '../stores/documentStore';
 import { useUIStore } from '../stores/uiStore';
+import { useAuthStore } from '../stores/authStore';
 import { apiClient } from '../services/apiClient';
 import type { Document } from '../types';
 
@@ -106,11 +107,17 @@ export function Documents() {
 
   const { documents, setDocuments, deleteDocument, setLoading } = useDocumentStore();
   const { showToast } = useUIStore();
+  const { accessToken } = useAuthStore();
 
   /**
-   * Fetch documents on mount
+   * Fetch documents on mount (only after auth token is available)
    */
   useEffect(() => {
+    // Wait until accessToken is available (store hydration complete)
+    if (!accessToken) {
+      return;
+    }
+
     const fetchDocuments = async () => {
       setLoading(true);
       try {
@@ -124,7 +131,7 @@ export function Documents() {
     };
 
     fetchDocuments();
-  }, [setDocuments, setLoading, showToast]);
+  }, [accessToken, setDocuments, setLoading, showToast]);
 
   /**
    * Handle document delete request

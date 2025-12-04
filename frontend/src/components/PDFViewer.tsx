@@ -125,9 +125,10 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({
         const renderContext = {
           canvasContext: context,
           viewport: pageViewport,
+          canvas,
         };
 
-        await pdfPage.render(renderContext).promise;
+        await pdfPage.render(renderContext as any).promise;
 
         // Render text layer for text selection and highlighting
         if (textLayerRef.current) {

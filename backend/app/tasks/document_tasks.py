@@ -191,6 +191,10 @@ async def _parse_document(
         clear_context()
 
 
+import trafilatura
+
+# ... (imports)
+
 def _extract_elements(source_type: DocumentSource, document, source_url: Optional[str]) -> list[Dict]:
     chunker = get_chunker()
     if source_type == DocumentSource.pdf:
@@ -200,18 +204,136 @@ def _extract_elements(source_type: DocumentSource, document, source_url: Optiona
     if source_type == DocumentSource.url:
         url = source_url or document.source_value
         html = _fetch_remote_content(url)
-        return chunker.parse_html(html)
+        text = trafilatura.extract(html, include_comments=False, include_tables=True, no_fallback=True, output_format="markdown")
+        if not text:
+            # Fallback to unstructured parsing if trafilatura fails to extract main content
+            return chunker.parse_html(html)
+        return chunker.parse_plain_text(text)
     return chunker.parse_plain_text(document.source_value)
 
 
+from curl_cffi import requests
+
+# ... (imports)
+
+
+
+
 def _fetch_remote_content(url: str) -> str:
+    """
+    Use curl_cffi to simulate a real browser download and bypass TLS fingerprint detection.
+    Also implements heuristic iframe extraction to find the real content.
+    """
     try:
-        with httpx.Client(timeout=20) as client:
-            response = client.get(url)
-            response.raise_for_status()
-            return response.text
-    except Exception as exc:
-        raise RuntimeError(f"Failed to fetch URL content: {url}") from exc
+        # 1. Fetch the initial page
+        response = requests.get(
+            url,
+            impersonate="chrome120", 
+            headers={
+                "Referer": "https://www.zhihu.com/",
+                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8"
+            },
+            cookies={
+                "d_c0": "AGD8-dummy-device-id" 
+            },
+            timeout=15
+        )
+        
+        if response.status_code != 200:
+            raise RuntimeError(f"Download failed with status {response.status_code}")
+
+        html = response.text
+        
+        # 2. Parse with BeautifulSoup to check for iframes
+        try:
+            from bs4 import BeautifulSoup
+            from urllib.parse import urljoin
+            
+            soup = BeautifulSoup(html, 'html.parser')
+            iframes = soup.find_all('iframe')
+            
+            if not iframes:
+                return html
+                
+            # 3. Heuristic scoring for iframes
+            best_iframe = None
+            max_score = 0
+            
+            for iframe in iframes:
+                src = iframe.get('src')
+                if not src:
+                    continue
+                    
+                score = 0
+                
+                # Heuristic 1: Size attributes
+                width = iframe.get('width')
+                height = iframe.get('height')
+                style = iframe.get('style', '').lower()
+                
+                # Prefer large or full-screen iframes
+                if width and (width == '100%' or (width.isdigit() and int(width) > 800)):
+                    score += 2
+                if height and (height == '100%' or (height.isdigit() and int(height) > 600)):
+                    score += 2
+                if 'width: 100%' in style or 'height: 100%' in style:
+                    score += 2
+                    
+                # Heuristic 2: Keywords in URL
+                src_lower = src.lower()
+                if 'pdf' in src_lower:
+                    score += 3
+                if 'article' in src_lower or 'content' in src_lower:
+                    score += 1
+                if 'viewer' in src_lower:
+                    score += 2
+                    
+                # Heuristic 3: ID/Class names
+                id_attr = iframe.get('id', '').lower()
+                class_attr = str(iframe.get('class', '')).lower()
+                if 'content' in id_attr or 'main' in id_attr or 'article' in id_attr:
+                    score += 2
+                if 'content' in class_attr or 'main' in class_attr:
+                    score += 2
+                
+                # Heuristic 4: Avoid common ad/tracking iframes
+                if 'ads' in src_lower or 'tracker' in src_lower or 'analytics' in src_lower:
+                    score -= 10
+                if 'facebook' in src_lower or 'twitter' in src_lower or 'youtube' in src_lower:
+                    score -= 5
+
+                if score > max_score:
+                    max_score = score
+                    best_iframe = src
+
+            # 4. If a good candidate is found (score > threshold), fetch it
+            if best_iframe and max_score > 0:
+                logger.info(f"Found content iframe with score {max_score}: {best_iframe}")
+                full_url = urljoin(url, best_iframe)
+                
+                iframe_response = requests.get(
+                    full_url,
+                    impersonate="chrome120",
+                    headers={
+                        "Referer": url, # Set referer to the parent page
+                        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                    },
+                    timeout=15
+                )
+                
+                if iframe_response.status_code == 200:
+                    return iframe_response.text
+                    
+        except ImportError:
+            logger.warning("BeautifulSoup not installed, skipping iframe extraction")
+        except Exception as e:
+            logger.warning(f"Iframe extraction failed: {e}")
+
+        return html
+
+    except Exception as e:
+        raise RuntimeError(f"Failed to fetch URL content: {url}. Error: {str(e)}")
 
 
 def _chunks_path(document_id: str) -> Path:

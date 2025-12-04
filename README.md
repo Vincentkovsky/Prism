@@ -7,6 +7,9 @@ pip install -r backend/requirements.txt
 启动项目
 .venv/bin/python -m uvicorn backend.app.main:app --reload
 
+Celery: celery -A backend.app.celery_app worker --loglevel=info
+
+
 运行测试
 pytest
 

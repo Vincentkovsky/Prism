@@ -14,6 +14,7 @@ import {
 import { useChatStore } from '../stores/chatStore';
 import { useDocumentStore } from '../stores/documentStore';
 import { useUIStore } from '../stores/uiStore';
+import { useAuthStore } from '../stores/authStore';
 import { SSEClient, type SSEClientOptions } from '../services/sseClient';
 import { apiClient } from '../services/apiClient';
 import { storageService } from '../services/storageService';
@@ -108,6 +109,7 @@ export function ChatWorkbench() {
 
   const { setDocuments } = useDocumentStore();
   const { showToast } = useUIStore();
+  const { accessToken } = useAuthStore();
 
   // Local state
   const [isGenerating, setIsGenerating] = useState(false);
@@ -127,15 +129,18 @@ export function ChatWorkbench() {
 
   const messages = currentConversation?.messages ?? [];
 
-  // Load conversations and documents on mount
+  // Load conversations from storage on mount
   useEffect(() => {
-    // Load conversations from storage
     const savedConversations = storageService.loadConversations();
     if (savedConversations.length > 0) {
       setConversations(savedConversations);
     }
+  }, [setConversations]);
 
-    // Fetch documents (still needed for backend context, even if not selected in UI)
+  // Fetch documents after auth token is available
+  useEffect(() => {
+    if (!accessToken) return;
+
     const fetchDocuments = async () => {
       try {
         const docs = await apiClient.get<Document[]>('/documents');
@@ -145,7 +150,7 @@ export function ChatWorkbench() {
       }
     };
     fetchDocuments();
-  }, [setConversations, setDocuments]);
+  }, [accessToken, setDocuments]);
 
   // Handle URL session ID
   useEffect(() => {
