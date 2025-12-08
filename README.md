@@ -1,5 +1,7 @@
 # Blockchain Whitepaper RAG Analyzer
 
+**GitHub**: [https://github.com/Vincentkovsky/Prism](https://github.com/Vincentkovsky/Prism/tree/main)
+
 基于 RAG (Retrieval-Augmented Generation) 的区块链白皮书智能分析系统。
 
 ## 功能特性
