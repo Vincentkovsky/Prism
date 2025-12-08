@@ -17,6 +17,18 @@ import type { Citation } from '../types';
 const CITATION_REGEX = /\[\[citation:([^:\]]+):([^\]]+)\]\]/g;
 
 /**
+ * Fallback regex for simplified citations without chunk ID:
+ * [[citation:source_name]]
+ * This handles cases where LLM omits the chunk ID.
+ */
+const CITATION_SIMPLE_REGEX = /\[\[citation:([^\]]+)\]\]/g;
+
+/**
+ * Regex to clean up legacy "(Source: ...)" text that LLM may still output
+ */
+const LEGACY_SOURCE_REGEX = /\s*\(Source:\s*[^)]+\)/g;
+
+/**
  * Represents a parsed citation marker with its position in the text
  */
 export interface ParsedCitation {
@@ -59,21 +71,24 @@ export interface CitationParseResult {
  */
 export function parseCitations(text: string): CitationParseResult {
   const citations: ParsedCitation[] = [];
-  let processedText = text;
-  
+
+  // First, clean up legacy "(Source: ...)" text that LLM may still output
+  let processedText = text.replace(LEGACY_SOURCE_REGEX, '');
+
   // Track unique citations to assign consistent indices
   const citationMap = new Map<string, number>();
-  
-  // Find all citation matches
+
+  // Find all full citation matches: [[citation:doc_id:chunk_id]]
   let match: RegExpExecArray | null;
   const regex = new RegExp(CITATION_REGEX.source, 'g');
-  
-  while ((match = regex.exec(text)) !== null) {
+  const processedPositions = new Set<number>(); // Track already processed positions
+
+  while ((match = regex.exec(processedText)) !== null) {
     const fullMatch = match[0];
     const documentId = match[1];
     const chunkId = match[2];
     const key = `${documentId}:${chunkId}`;
-    
+
     // Assign index - reuse if same citation appears multiple times
     let index: number;
     if (citationMap.has(key)) {
@@ -82,7 +97,7 @@ export function parseCitations(text: string): CitationParseResult {
       index = citationMap.size + 1;
       citationMap.set(key, index);
     }
-    
+
     citations.push({
       fullMatch,
       documentId,
@@ -91,18 +106,52 @@ export function parseCitations(text: string): CitationParseResult {
       endIndex: match.index + fullMatch.length,
       index,
     });
+    processedPositions.add(match.index);
   }
-  
+
+  // Fallback: Find simplified citations [[citation:source_name]] (without chunk ID)
+  const simpleRegex = new RegExp(CITATION_SIMPLE_REGEX.source, 'g');
+  while ((match = simpleRegex.exec(processedText)) !== null) {
+    // Skip if this position was already processed by the full regex
+    if (processedPositions.has(match.index)) continue;
+
+    const fullMatch = match[0];
+    const sourceName = match[1];
+
+    // Check if this is actually a full citation (contains colon = already processed)
+    if (sourceName.includes(':')) continue;
+
+    // Use empty string for chunkId to match backend format
+    const key = `${sourceName}:`;
+
+    let index: number;
+    if (citationMap.has(key)) {
+      index = citationMap.get(key)!;
+    } else {
+      index = citationMap.size + 1;
+      citationMap.set(key, index);
+    }
+
+    citations.push({
+      fullMatch,
+      documentId: sourceName,
+      chunkId: '', // Use empty string to match backend format
+      startIndex: match.index,
+      endIndex: match.index + fullMatch.length,
+      index,
+    });
+  }
+
   // Replace citation markers with badge placeholders [1], [2], etc.
   // Process in reverse order to maintain correct indices
   const sortedCitations = [...citations].sort((a, b) => b.startIndex - a.startIndex);
   for (const citation of sortedCitations) {
-    processedText = 
-      processedText.slice(0, citation.startIndex) + 
-      `[${citation.index}]` + 
+    processedText =
+      processedText.slice(0, citation.startIndex) +
+      `[${citation.index}]` +
       processedText.slice(citation.endIndex);
   }
-  
+
   return { citations, processedText };
 }
 
@@ -121,7 +170,7 @@ export function toCitationObjects(
   // Deduplicate by documentId:chunkId, keeping first occurrence
   const seen = new Set<string>();
   const uniqueCitations: ParsedCitation[] = [];
-  
+
   for (const parsed of parsedCitations) {
     const key = `${parsed.documentId}:${parsed.chunkId}`;
     if (!seen.has(key)) {
@@ -129,7 +178,7 @@ export function toCitationObjects(
       uniqueCitations.push(parsed);
     }
   }
-  
+
   return uniqueCitations.map((parsed) => ({
     index: parsed.index,
     documentId: parsed.documentId,

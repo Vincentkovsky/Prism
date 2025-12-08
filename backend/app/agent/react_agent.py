@@ -296,6 +296,7 @@ class ReActAgent:
         
         # Initialize state
         observations: List[str] = []
+        sources: List[Dict[str, Any]] = []  # Collect sources from tool results
         
         # Build tools description
         tools_description = self._build_tools_description()
@@ -338,12 +339,14 @@ class ReActAgent:
                     metadata={"step": step_count},
                 )
             
-            # Check for final answer
             if final_answer:
                 yield AgentStreamEvent(
                     event_type="answer",
                     content=final_answer,
-                    metadata={"latency_ms": (time.perf_counter() - start_time) * 1000},
+                    metadata={
+                        "latency_ms": (time.perf_counter() - start_time) * 1000,
+                        "sources": sources,
+                    },
                 )
                 return
             
@@ -367,6 +370,43 @@ class ReActAgent:
                     content=observation[:500] + "..." if len(observation) > 500 else observation,
                     metadata={"tool": action},
                 )
+                
+                # Extract sources from tool results
+                if action in ("web_search", "search_web"):
+                    try:
+                        results = json.loads(observation) if isinstance(observation, str) else observation
+                        if isinstance(results, list):
+                            # Use 1-based index matching the citation format [[citation:N]]
+                            start_idx = len(sources) + 1  # Continue numbering from previous sources
+                            for idx, r in enumerate(results):
+                                if isinstance(r, dict):
+                                    sources.append({
+                                        "documentId": str(start_idx + idx),  # Simple numeric ID: "1", "2", etc.
+                                        "chunkId": "",
+                                        "title": r.get("title", ""),
+                                        "url": r.get("url", ""),
+                                        "textSnippet": r.get("content", "")[:200],
+                                        "sourceType": "web",
+                                    })
+                    except (json.JSONDecodeError, TypeError):
+                        pass
+                elif action == "document_search":
+                    try:
+                        results = json.loads(observation) if isinstance(observation, str) else observation
+                        if isinstance(results, list):
+                            start_idx = len(sources) + 1
+                            for idx, r in enumerate(results):
+                                if isinstance(r, dict):
+                                    sources.append({
+                                        "documentId": str(start_idx + idx),  # Simple numeric ID
+                                        "chunkId": "",
+                                        "title": r.get("document_name", ""),
+                                        "textSnippet": r.get("content", "")[:200],
+                                        "sourceType": "pdf",
+                                        "page": r.get("page_number"),
+                                    })
+                    except (json.JSONDecodeError, TypeError):
+                        pass
                 
                 # Update conversation history
                 conversation_history.append({
@@ -402,7 +442,10 @@ class ReActAgent:
         yield AgentStreamEvent(
             event_type="answer",
             content=final_answer,
-            metadata={"latency_ms": (time.perf_counter() - start_time) * 1000},
+            metadata={
+                "latency_ms": (time.perf_counter() - start_time) * 1000,
+                "sources": sources,
+            },
         )
 
     

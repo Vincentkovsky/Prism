@@ -118,14 +118,23 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
         onDelete?.();
     };
 
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onSelect();
+        }
+    };
+
     return (
-        <button
-            type="button"
+        <div
+            role="button"
+            tabIndex={0}
             onClick={onSelect}
+            onKeyDown={handleKeyDown}
             onMouseEnter={() => setShowDelete(true)}
             onMouseLeave={() => setShowDelete(false)}
             className={`
-        w-full flex items-center gap-2 px-3 py-2 rounded-md text-left transition-colors group relative text-sm
+        w-full flex items-center gap-2 px-3 py-2 rounded-md text-left transition-colors group relative text-sm cursor-pointer
         ${isSelected
                     ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
                     : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300'
@@ -157,7 +166,7 @@ const ConversationItem: React.FC<ConversationItemProps> = ({
                     </span>
                 </div>
             </div>
-        </button>
+        </div>
     );
 };
 

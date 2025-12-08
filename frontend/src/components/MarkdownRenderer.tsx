@@ -25,7 +25,7 @@ export interface MarkdownRendererProps {
 }
 
 /**
- * Citation Badge component for inline citations
+ * Citation Badge component for inline citations with hover tooltip
  */
 interface CitationBadgeInlineProps {
   citation: ParsedCitation;
@@ -33,12 +33,20 @@ interface CitationBadgeInlineProps {
   metadata?: Partial<Citation>;
 }
 
-const CitationBadgeInline: React.FC<CitationBadgeInlineProps> = ({ 
-  citation, 
+const CitationBadgeInline: React.FC<CitationBadgeInlineProps> = ({
+  citation,
   onClick,
-  metadata 
+  metadata
 }) => {
+  const [showTooltip, setShowTooltip] = React.useState(false);
+
   const handleClick = () => {
+    // If URL available, open in new tab
+    if (metadata?.url) {
+      window.open(metadata.url, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    // Otherwise trigger callback
     if (onClick) {
       const fullCitation: Citation = {
         index: citation.index,
@@ -56,15 +64,72 @@ const CitationBadgeInline: React.FC<CitationBadgeInlineProps> = ({
   };
 
   return (
-    <button
-      type="button"
-      onClick={handleClick}
-      className="inline-flex items-center justify-center min-w-[1.5rem] h-5 px-1.5 mx-0.5 text-xs font-medium text-blue-600 bg-blue-100 rounded hover:bg-blue-200 dark:text-blue-400 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 transition-colors cursor-pointer"
-      title={`Citation ${citation.index}: ${citation.documentId}`}
-      data-testid={`citation-badge-${citation.index}`}
-    >
-      {citation.index}
-    </button>
+    <span className="relative inline-block">
+      <button
+        type="button"
+        onClick={handleClick}
+        onMouseEnter={() => setShowTooltip(true)}
+        onMouseLeave={() => setShowTooltip(false)}
+        className="inline-flex items-center justify-center min-w-[1.5rem] h-5 px-1.5 mx-0.5 text-xs font-medium text-blue-600 bg-blue-100 rounded hover:bg-blue-200 dark:text-blue-400 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 transition-colors cursor-pointer"
+        data-testid={`citation-badge-${citation.index}`}
+      >
+        {citation.index}
+      </button>
+
+      {/* Tooltip */}
+      {showTooltip && metadata && (
+        <div
+          className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-72 p-3 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 text-left"
+          onMouseEnter={() => setShowTooltip(true)}
+          onMouseLeave={() => setShowTooltip(false)}
+        >
+          {/* Arrow */}
+          <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-px">
+            <div className="border-8 border-transparent border-t-white dark:border-t-gray-800" />
+          </div>
+
+          {/* Title */}
+          {metadata.title && (
+            <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1 line-clamp-2">
+              {metadata.title}
+            </p>
+          )}
+
+          {/* URL */}
+          {metadata.url && (
+            <a
+              href={metadata.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-blue-500 hover:underline mb-2 block truncate"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {metadata.url}
+            </a>
+          )}
+
+          {/* Snippet */}
+          {metadata.textSnippet && (
+            <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-3">
+              {metadata.textSnippet}
+            </p>
+          )}
+
+          {/* Source type indicator */}
+          <div className="mt-2 flex items-center gap-1">
+            <span className={`text-[10px] px-1.5 py-0.5 rounded ${metadata.sourceType === 'web'
+              ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+              : 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+              }`}>
+              {metadata.sourceType === 'web' ? '🌐 Web' : '📄 PDF'}
+            </span>
+            {metadata.page && (
+              <span className="text-[10px] text-gray-500">Page {metadata.page}</span>
+            )}
+          </div>
+        </div>
+      )}
+    </span>
   );
 };
 
@@ -79,7 +144,12 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
 }) => {
   // Parse citations and get processed text
   const { processedContent, citations } = useMemo(() => {
-    const result = parseCitations(content);
+    // Pre-process content to escape dollar signs used for currency (e.g., $100)
+    // to prevent remark-math from interpreting them as LaTeX delimiters.
+    // We only escape $ if it's followed by a digit.
+    const escapedContent = content.replace(/\$(\d)/g, '\\$$1');
+
+    const result = parseCitations(escapedContent);
     return {
       processedContent: result.processedText,
       citations: result.citations,
@@ -251,7 +321,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
   }), [renderWithCitations]);
 
   return (
-    <div 
+    <div
       className={`markdown-content prose prose-sm dark:prose-invert max-w-none ${className}`}
       data-testid="markdown-renderer"
     >

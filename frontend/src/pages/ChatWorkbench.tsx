@@ -270,19 +270,21 @@ export function ChatWorkbench() {
     // Create throttled content updater (50ms batching)
     const throttledContentUpdate = createThrottledUpdater<string>((content) => {
       if (conversationId) {
-        // Update the message content directly
-        useChatStore.setState(state => ({
-          conversations: state.conversations.map(c =>
-            c.id === conversationId
-              ? {
-                ...c,
-                messages: c.messages.map(m =>
-                  m.id === assistantMessageId ? { ...m, content } : m
-                ),
-              }
-              : c
-          ),
-        }));
+        // Update the message content directly - defer to avoid setState during render
+        queueMicrotask(() => {
+          useChatStore.setState(state => ({
+            conversations: state.conversations.map(c =>
+              c.id === conversationId
+                ? {
+                  ...c,
+                  messages: c.messages.map(m =>
+                    m.id === assistantMessageId ? { ...m, content } : m
+                  ),
+                }
+                : c
+            ),
+          }));
+        });
       }
     }, 50);
 
@@ -298,20 +300,22 @@ export function ChatWorkbench() {
             actionInput: null,
             observation: '',
           }];
-          // Update message with thought steps
+          // Update message with thought steps - defer to avoid setState during render
           if (conversationId) {
-            useChatStore.setState(state => ({
-              conversations: state.conversations.map(c =>
-                c.id === conversationId
-                  ? {
-                    ...c,
-                    messages: c.messages.map(m =>
-                      m.id === assistantMessageId ? { ...m, thoughtSteps: newSteps } : m
-                    ),
-                  }
-                  : c
-              ),
-            }));
+            queueMicrotask(() => {
+              useChatStore.setState(state => ({
+                conversations: state.conversations.map(c =>
+                  c.id === conversationId
+                    ? {
+                      ...c,
+                      messages: c.messages.map(m =>
+                        m.id === assistantMessageId ? { ...m, thoughtSteps: newSteps } : m
+                      ),
+                    }
+                    : c
+                ),
+              }));
+            });
           }
           return newSteps;
         });
@@ -369,18 +373,20 @@ export function ChatWorkbench() {
 
         // Update citations if provided
         if (sources && sources.length > 0 && conversationId) {
-          useChatStore.setState(state => ({
-            conversations: state.conversations.map(c =>
-              c.id === conversationId
-                ? {
-                  ...c,
-                  messages: c.messages.map(m =>
-                    m.id === assistantMessageId ? { ...m, citations: sources } : m
-                  ),
-                }
-                : c
-            ),
-          }));
+          queueMicrotask(() => {
+            useChatStore.setState(state => ({
+              conversations: state.conversations.map(c =>
+                c.id === conversationId
+                  ? {
+                    ...c,
+                    messages: c.messages.map(m =>
+                      m.id === assistantMessageId ? { ...m, citations: sources } : m
+                    ),
+                  }
+                  : c
+              ),
+            }));
+          });
         }
       },
 
@@ -448,7 +454,7 @@ export function ChatWorkbench() {
           data-testid="chat-area"
         >
           {/* Chat Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+          <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
             <div className="flex items-center gap-3 overflow-hidden">
               <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100 truncate">
                 {currentConversation?.title || 'New Conversation'}
@@ -487,7 +493,7 @@ export function ChatWorkbench() {
           </div>
 
           {/* Messages Area */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4">
             {messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-center">
                 <div className="w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-4">
@@ -516,13 +522,15 @@ export function ChatWorkbench() {
             )}
           </div>
 
-          {/* Chat Input */}
-          <ChatInput
-            onSubmit={handleSubmit}
-            onStop={handleStopGeneration}
-            isGenerating={isGenerating}
-            disabled={false}
-          />
+          {/* Chat Input - fixed at bottom via flex layout */}
+          <div className="flex-shrink-0 z-10">
+            <ChatInput
+              onSubmit={handleSubmit}
+              onStop={handleStopGeneration}
+              isGenerating={isGenerating}
+              disabled={false}
+            />
+          </div>
         </div>
       </div>
     </div>

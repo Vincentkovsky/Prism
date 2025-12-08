@@ -20,6 +20,7 @@ export interface Citation {
   highlightCoords?: number[][];
   sourceType: 'pdf' | 'web';
   url?: string;
+  title?: string;
 }
 
 export interface ChatMessage {
@@ -41,10 +42,10 @@ export interface Conversation {
   updatedAt: string;
 }
 
-export type AgentStatus = 
-  | 'idle' 
-  | 'thinking' 
-  | 'searching_docs' 
-  | 'searching_web' 
-  | 'analyzing' 
+export type AgentStatus =
+  | 'idle'
+  | 'thinking'
+  | 'searching_docs'
+  | 'searching_web'
+  | 'analyzing'
   | 'generating';
