@@ -400,10 +400,13 @@ class ReActAgent:
                                     sources.append({
                                         "documentId": str(start_idx + idx),  # Simple numeric ID
                                         "chunkId": "",
-                                        "title": r.get("document_name", ""),
-                                        "textSnippet": r.get("content", "")[:200],
+                                        # document_search returns 'section' and 'document_id', but not always 'document_name'
+                                        "title": r.get("document_name", r.get("section", r.get("document_id", "Untitled Document"))),
+                                        # document_search returns 'text', not 'content'
+                                        "textSnippet": r.get("text", r.get("content", ""))[:200],
                                         "sourceType": "pdf",
-                                        "page": r.get("page_number"),
+                                        # document_search returns 'page'
+                                        "page": r.get("page", r.get("page_number")),
                                     })
                     except (json.JSONDecodeError, TypeError):
                         pass
