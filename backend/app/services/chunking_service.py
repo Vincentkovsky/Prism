@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import json
 import re
+import base64
+import io
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence
+from typing import Dict, List, Optional, Sequence, Tuple
 import logging
 
 try:
@@ -28,6 +30,25 @@ try:
     from bs4 import BeautifulSoup
 except ImportError:  # pragma: no cover
     BeautifulSoup = None  # type: ignore
+
+try:
+    import pdfplumber
+except ImportError:  # pragma: no cover
+    pdfplumber = None  # type: ignore
+
+try:
+    from pdf2image import convert_from_path
+    from PIL import Image
+except ImportError:  # pragma: no cover
+    convert_from_path = None  # type: ignore
+    Image = None  # type: ignore
+
+try:
+    from google import genai
+    from google.genai import types as genai_types
+except ImportError:  # pragma: no cover
+    genai = None  # type: ignore
+    genai_types = None  # type: ignore
 
 try:
     from openai import OpenAI
@@ -89,7 +110,25 @@ class StructuredChunker:
                 model_name="yolox",
             )
             
+            # Collect table elements for VLM extraction
+            table_elements = [e for e in elements if e.category == "Table"]
+            
+            # Extract tables using VLM (Gemini) for maximum accuracy
+            vlm_tables = {}
+            if table_elements and genai:
+                try:
+                    vlm_tables = self._extract_tables_with_vlm(pdf_path, table_elements)
+                    logging.getLogger(__name__).info(
+                        f"VLM extracted {len(vlm_tables)} tables from {pdf_path.name}"
+                    )
+                except Exception as e:
+                    logging.getLogger(__name__).warning(
+                        f"VLM table extraction failed, falling back to unstructured: {e}"
+                    )
+            
             cleaned_results = []
+            table_count_per_page = {}  # Track table index per page
+            
             for element in elements:
                 # Skip headers and footers (page numbers, etc.)
                 if element.category in ["Footer", "Header"]:
@@ -97,9 +136,21 @@ class StructuredChunker:
                 
                 item_dict = self._element_to_dict(element)
                 
-                # For tables, use HTML structure if available (better for LLM)
-                if element.category == "Table" and hasattr(element.metadata, 'text_as_html') and element.metadata.text_as_html:
-                    item_dict['text'] = element.metadata.text_as_html
+                # For tables, use VLM extraction result
+                if element.category == "Table":
+                    page_num = getattr(element.metadata, 'page_number', 1) or 1
+                    table_idx = table_count_per_page.get(page_num, 0)
+                    table_count_per_page[page_num] = table_idx + 1
+                    
+                    # Check if we have a VLM-extracted table
+                    vlm_key = (page_num, table_idx)
+                    if vlm_key in vlm_tables:
+                        item_dict['text'] = vlm_tables[vlm_key]
+                        item_dict['metadata']['extraction_method'] = 'vlm_gemini'
+                    elif hasattr(element.metadata, 'text_as_html') and element.metadata.text_as_html:
+                        # Fallback to unstructured HTML
+                        item_dict['text'] = element.metadata.text_as_html
+                        item_dict['metadata']['extraction_method'] = 'unstructured_html'
                 
                 cleaned_results.append(item_dict)
             
@@ -109,6 +160,161 @@ class StructuredChunker:
                 "Failed to parse PDF with unstructured: %s", pdf_path
             )
             raise
+
+    def _extract_tables_with_vlm(self, pdf_path: Path, table_elements: List) -> Dict[int, List[str]]:
+        """Extract tables from PDF using VLM (Gemini) for maximum accuracy.
+        
+        Pipeline:
+        1. Get table bounding box from unstructured element
+        2. Convert PDF page to image
+        3. Crop table region from image
+        4. Send to Gemini for markdown conversion
+        
+        Returns:
+            Dict mapping (page_number, table_index) -> markdown string
+        """
+        if not convert_from_path or not Image or not genai:
+            logging.getLogger(__name__).warning(
+                "VLM table extraction requires pdf2image, PIL, and google-genai"
+            )
+            return {}
+        
+        from ..core.config import get_settings
+        settings = get_settings()
+        
+        if not settings.google_api_key:
+            logging.getLogger(__name__).warning("No Google API key for VLM extraction")
+            return {}
+        
+        # Initialize Gemini client
+        gemini_client = genai.Client(api_key=settings.google_api_key)
+        
+        # Convert PDF pages to images (only pages with tables)
+        table_pages = set()
+        for elem in table_elements:
+            page_num = getattr(elem.metadata, 'page_number', 1) or 1
+            table_pages.add(page_num)
+        
+        if not table_pages:
+            return {}
+        
+        # Convert relevant pages to images (300 DPI for good quality)
+        try:
+            page_images = convert_from_path(
+                str(pdf_path),
+                dpi=150,  # Balance between quality and speed
+                first_page=min(table_pages),
+                last_page=max(table_pages),
+            )
+            # Create mapping: page_number -> image
+            page_offset = min(table_pages)
+            images_by_page = {
+                page_offset + i: img for i, img in enumerate(page_images)
+            }
+        except Exception as e:
+            logging.getLogger(__name__).error(f"Failed to convert PDF to images: {e}")
+            return {}
+        
+        tables_extracted = {}
+        
+        for elem in table_elements:
+            page_num = getattr(elem.metadata, 'page_number', 1) or 1
+            
+            if page_num not in images_by_page:
+                continue
+            
+            page_image = images_by_page[page_num]
+            
+            # Get bounding box coordinates from unstructured
+            coords = getattr(elem.metadata, 'coordinates', None)
+            
+            if coords and hasattr(coords, 'points'):
+                # Crop table region
+                cropped = self._crop_table_from_image(page_image, coords.points)
+            else:
+                # No bbox, use full page (less ideal but still works)
+                cropped = page_image
+            
+            # Send to Gemini for extraction
+            markdown = self._extract_table_with_gemini(gemini_client, cropped, settings.gemini_model_flash)
+            
+            if markdown:
+                key = (page_num, len([k for k in tables_extracted if k[0] == page_num]))
+                tables_extracted[key] = markdown
+        
+        return tables_extracted
+    
+    def _crop_table_from_image(self, page_image: "Image.Image", points: List) -> "Image.Image":
+        """Crop table region from page image using bounding box coordinates."""
+        if not points or len(points) < 2:
+            return page_image
+        
+        try:
+            # Points are typically in PDF coordinates, need to scale to image
+            # unstructured returns points as list of (x, y) tuples
+            xs = [p[0] for p in points]
+            ys = [p[1] for p in points]
+            
+            # Get image dimensions
+            img_width, img_height = page_image.size
+            
+            # PDF coordinates are typically 72 DPI, image is 150 DPI
+            scale_factor = 150 / 72
+            
+            left = max(0, int(min(xs) * scale_factor) - 10)
+            top = max(0, int(min(ys) * scale_factor) - 10)
+            right = min(img_width, int(max(xs) * scale_factor) + 10)
+            bottom = min(img_height, int(max(ys) * scale_factor) + 10)
+            
+            return page_image.crop((left, top, right, bottom))
+        except Exception as e:
+            logging.getLogger(__name__).debug(f"Failed to crop table: {e}")
+            return page_image
+    
+    def _extract_table_with_gemini(self, client, image: "Image.Image", model: str) -> Optional[str]:
+        """Use Gemini VLM to extract table as markdown."""
+        try:
+            # Convert PIL image to bytes
+            img_buffer = io.BytesIO()
+            image.save(img_buffer, format='PNG')
+            img_bytes = img_buffer.getvalue()
+            
+            prompt = """请精准转录这张图片中的表格为 Markdown 格式。
+
+要求：
+1. 保持原始表格结构，包括所有列和行
+2. 不要遗漏任何数字、日期或文本
+3. 对于空白单元格，保留为空（不要填 N/A 或 -）
+4. 对于金额，保留原始格式（如 $1,234,567）
+5. 直接输出 Markdown 表格，不要添加任何解释
+
+只返回表格本身，不要有其他内容。"""
+
+            response = client.models.generate_content(
+                model=model,
+                contents=[
+                    genai_types.Part.from_bytes(data=img_bytes, mime_type="image/png"),
+                    prompt,
+                ],
+                config=genai_types.GenerateContentConfig(
+                    temperature=0.1,
+                    max_output_tokens=4096,
+                ),
+            )
+            
+            # Extract text from response
+            if hasattr(response, 'text') and response.text:
+                markdown = response.text.strip()
+                # Clean up any markdown code block wrappers
+                if markdown.startswith('```'):
+                    lines = markdown.split('\n')
+                    markdown = '\n'.join(lines[1:-1] if lines[-1] == '```' else lines[1:])
+                return markdown
+            
+            return None
+        except Exception as e:
+            logging.getLogger(__name__).error(f"Gemini table extraction failed: {e}")
+            return None
 
             
     def parse_html(self, html_content: str) -> List[Dict]:
@@ -419,6 +625,13 @@ class StructuredChunker:
 
     def _table_to_markdown(self, table_element: Dict) -> str:
         metadata = table_element.get("metadata") or {}
+        
+        # CRITICAL: If already extracted accurately (VLM or pdfplumber), use that directly!
+        # Don't re-parse HTML which would overwrite the accurate result
+        extraction_method = metadata.get("extraction_method", "")
+        if extraction_method in ("vlm_gemini", "pdfplumber"):
+            return table_element.get("text", "")
+        
         html = metadata.get("text_as_html") or metadata.get("table_as_html") or ""
         if not html or pd is None or BeautifulSoup is None:
             return table_element.get("text", "")
@@ -433,7 +646,13 @@ class StructuredChunker:
             return table_element.get("text", "")
         if not df_list:
             return table_element.get("text", "")
-        return df_list[0].to_markdown(index=False)
+        
+        df = df_list[0]
+        # Replace NaN values with empty strings to avoid 'nan' in output
+        df = df.fillna('')
+        # Also clean up any 'nan' strings that might have been parsed as text
+        df = df.replace('nan', '')
+        return df.to_markdown(index=False)
 
     def _summarize_table(self, markdown: str) -> str:
         if not markdown.strip():
