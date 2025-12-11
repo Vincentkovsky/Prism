@@ -23,7 +23,7 @@ def create_document_search_tool(rag_service: RAGService) -> Tool:
     Returns:
         A Tool instance configured for document search
     """
-    from ..core.config import get_settings
+    from ...core.config import get_settings
     settings = get_settings()
     default_k = settings.retrieval_top_k
     
