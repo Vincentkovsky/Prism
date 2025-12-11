@@ -57,9 +57,13 @@ async def _resolve_supabase_user(token: str, settings: Settings) -> UserContext:
     return UserContext(id=user_id, email=email, is_subscriber=is_subscriber, access_token=token)
 
 
+import uuid
+
 def _mock_user_context(token: str) -> UserContext:
     is_subscriber = token.endswith("-pro") or token.startswith("pro-")
-    return UserContext(id=token, email=f"{token}@example.com", is_subscriber=is_subscriber, access_token=token)
+    # Generate a deterministic UUID from the token to avoid long filenames
+    user_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, token))
+    return UserContext(id=user_id, email=f"{user_id}@example.com", is_subscriber=is_subscriber, access_token=token)
 
 
 def _looks_like_jwt(token: str) -> bool:

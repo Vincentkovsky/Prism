@@ -1,0 +1,45 @@
+[
+    {
+        "question": "What is the Exercise Price of the Option Awards granted to Vaibhav Taneja on October 31, 2024?",
+        "ground_truth": "The Exercise Price of the Option Awards granted to Vaibhav Taneja on October 31, 2024, is $249.85.",
+        "ground_truth_context": [
+            "Page 19, Grants of Plan-Based Awards in 2024 Table: Name: Vaibhav Taneja, Grant Date: 10/31/2024, Exercise or Base Price of Option Awards ($/sh): $ 249.85"
+        ],
+        "question_type": "hybrid_search_specific_value"
+    },
+    {
+        "question": "Compare the related person transaction expenses incurred by Tesla with xAI and SpaceX in 2024. Which company had the higher amount, and by how much?",
+        "ground_truth": "xAI had the higher transaction amount. In 2024, expenses incurred with xAI were approximately $198.3 million, while expenses with SpaceX were approximately $2.4 million. xAI was higher than SpaceX by approximately $195.9 million.",
+        "ground_truth_context": [
+            "Page 28: SpaceX is party to certain commercial, licensing and support agreements with Tesla. Under these agreements, SpaceX incurred expenses of approximately $2.4 million in 2024.",
+            "Page 29: xAI is party to certain commercial... agreements with Tesla. Under these agreements, xAI incurred expenses of approximately $198.3 million in 2024."
+        ],
+        "question_type": "multi_hop_reasoning"
+    },
+    {
+        "question": "Comparing directors Kimbal Musk and Ira Ehrenpreis, who beneficially owned more Tesla shares (including options exercisable within 60 days) as of December 31, 2024? What was the specific amount?",
+        "ground_truth": "Kimbal Musk owned more. As of December 31, 2024, Kimbal Musk beneficially owned 1,864,970 shares, while Ira Ehrenpreis owned 1,681,005 shares.",
+        "ground_truth_context": [
+            "Page 27, Beneficial Ownership Table: Ira Ehrenpreis shares: 1,681,005",
+            "Page 27, Beneficial Ownership Table: Kimbal Musk shares: 1,864,970"
+        ],
+        "question_type": "tabular_comparison"
+    },
+    {
+        "question": "What does the error code 'parameter_unknown' signify in API version 2022-11-15? (Note: This is a simulated Hybrid Search stress test; the document does not contain this information, used to test for hallucinations)",
+        "ground_truth": "The document does not mention the error code 'parameter_unknown' or any definition related to API version 2022-11-15. The model should state that no relevant information was found.",
+        "ground_truth_context": [],
+        "question_type": "negative_test"
+    },
+    {
+        "question": "List all specific accomplishments achieved by Tesla for the full year 2024, including specific growth data for energy storage.",
+        "ground_truth": "Accomplishments in 2024 include: 1. Model Y was the best-selling vehicle, of any kind, globally; 2. Reached lowest average cost of goods per vehicle ever at less than $35,000; 3. Energy storage reached 31.4 GWh, representing an increase of 113.3%, and completed construction of Megafactory Shanghai; 4. Improved FSD capabilities and increased AI training compute by over 400%; 5. Introduced the Cybercab.",
+        "ground_truth_context": [
+            "Page 9: Model Y was the best-selling vehicle, of any kind, globally for the full year 2024;",
+            "Page 9: Reached lowest average cost of goods per vehicle ever at less than $35,000;",
+            "Page 9: 31.4 gigawatt hours of energy storage, representing an increase of 113.3%, compared to the prior year...",
+            "Page 10: Further improvements and deployment of our FSD... AI training compute by over 400% in 2024..."
+        ],
+        "question_type": "summarization"
+    }
+]

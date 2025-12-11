@@ -157,7 +157,7 @@ def _normalize_queries(dimensions: List[str], raw: Dict[str, List[str]]) -> Dict
     return normalized
 
 
-def make_retrieve_all_contexts(rag_service: RAGRetriever, top_k: int = 5):
+def make_retrieve_all_contexts(rag_service: RAGRetriever, top_k: int = 10):
     """Factory that injects a RAGService-like dependency for context retrieval."""
 
     if rag_service is None:

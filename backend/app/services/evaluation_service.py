@@ -227,12 +227,16 @@ class RAGEvaluationService:
             except Exception:
                 pass  # Cache might not be available
             
+            # Get settings for top-k
+            settings = get_settings()
+            top_k = settings.retrieval_top_k
+
             # Get RAG response (fresh, not cached)
             chunks = rag_service.get_relevant_chunks(
                 question=question,
                 document_id=document_id,
                 user_id=user_id,
-                k=5,
+                k=top_k,
             )
             
             # Debug: log chunk retrieval
@@ -242,7 +246,7 @@ class RAGEvaluationService:
                 print(f"  ⚠️ No chunks retrieved! Check document_id={document_id}, user_id={user_id}")
             
             reranked = rag_service.rerank_chunks(question, chunks) if chunks else []
-            context = rag_service.build_context(reranked[:5]) if reranked else ""
+            context = rag_service.build_context(reranked[:top_k]) if reranked else ""
             
             answer_data = rag_service._generate_answer(
                 question=question,
@@ -254,7 +258,7 @@ class RAGEvaluationService:
             sample = EvaluationSample(
                 question=question,
                 answer=answer_data["answer"],
-                contexts=[c["text"] for c in reranked[:5]],
+                contexts=[c["text"] for c in reranked[:top_k]],
                 ground_truth=ground_truths[i] if ground_truths and i < len(ground_truths) else None,
             )
             samples.append(sample)

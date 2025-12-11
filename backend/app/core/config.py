@@ -49,6 +49,7 @@ class Settings(BaseSettings):
     gemini_embedding_model: str = "text-embedding-004"
     embedding_provider: str = "openai"
     embedding_model_openai: str = "text-embedding-3-large"
+    retrieval_top_k: int = 10
 
     # Celery / Redis
     redis_url: str = "redis://localhost:6379/0"
@@ -68,7 +69,7 @@ class Settings(BaseSettings):
     document_pipeline_enabled: bool = True
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=".env.rag",
         env_file_encoding="utf-8",
     )
 
