@@ -177,7 +177,7 @@ class IntentRouter:
         
         duration_ms = (time.perf_counter() - start_time) * 1000
         self.logger.info(
-            "Intent classified via LLM",
+            f"Intent classified via LLM: {llm_result.intent.value} (conf={llm_result.confidence:.2f})",
             extra={
                 "intent": llm_result.intent.value,
                 "confidence": llm_result.confidence,

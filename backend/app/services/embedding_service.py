@@ -134,6 +134,19 @@ class EmbeddingService:
                 extra={"document_id": document_id, "user_id": user_id, "error": str(e)},
             )
 
+    def delete_document_by_id(self, document_id: str) -> None:
+        """Delete all vectors for a document by ID (Admin only)"""
+        try:
+            self.collection.delete(
+                where={"document_id": {"$eq": document_id}}
+            )
+            self.logger.info("Deleted document vectors (admin)", extra={"document_id": document_id})
+        except Exception as e:
+            self.logger.warning(
+                "Failed to delete document vectors (may not exist)",
+                extra={"document_id": document_id, "error": str(e)},
+            )
+
     def list_documents(self) -> List[Dict]:
         """List all documents currently in ChromaDB (expensive operation)"""
         try:

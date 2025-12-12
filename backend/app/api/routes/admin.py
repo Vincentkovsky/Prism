@@ -96,3 +96,17 @@ async def get_chroma_document_chunks(
         )
     return chunks
 
+
+@router.delete("/chroma/documents/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_chroma_document(
+    document_id: str,
+    current_user: UserContext = Depends(get_current_user),
+    embedding_service: EmbeddingService = Depends(get_embedding_service_dep),
+):
+    """
+    Delete a document and its chunks from ChromaDB (Admin only).
+    """
+    # TODO: Add admin role check here
+    embedding_service.delete_document_by_id(document_id)
+
+

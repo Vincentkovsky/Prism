@@ -45,6 +45,25 @@ const ChromaViewer: React.FC = () => {
         }
     };
 
+    const handleDelete = async (e: React.MouseEvent, docId: string) => {
+        e.stopPropagation();
+        if (!window.confirm(`Are you sure you want to delete document ${docId}? This cannot be undone.`)) {
+            return;
+        }
+
+        try {
+            await adminService.deleteChromaDocument(docId);
+            setDocuments(prev => prev.filter(d => d.document_id !== docId));
+            if (selectedDocId === docId) {
+                setSelectedDocId(null);
+                setChunks([]);
+            }
+        } catch (error) {
+            console.error('Failed to delete document:', error);
+            alert('Failed to delete document');
+        }
+    };
+
     return (
         <div className="h-[calc(100vh-8rem)] flex flex-col gap-6">
             <div className="flex justify-between items-center">
@@ -80,24 +99,35 @@ const ChromaViewer: React.FC = () => {
                             documents.map((doc) => (
                                 <div
                                     key={doc.document_id}
-                                    onClick={() => setSelectedDocId(doc.document_id)}
-                                    className={`p-3 rounded-lg cursor-pointer border transition-all ${selectedDocId === doc.document_id
+                                    className={`p-3 rounded-lg border transition-all flex flex-col gap-2 ${selectedDocId === doc.document_id
                                         ? 'bg-indigo-50 border-indigo-200 shadow-sm'
                                         : 'bg-white border-transparent hover:bg-gray-50 hover:border-gray-200'
                                         }`}
                                 >
-                                    <div className="flex justify-between items-start mb-1">
-                                        <span className="font-medium text-gray-900 truncate" title={doc.document_id}>
-                                            {doc.document_id.slice(0, 8)}...
-                                        </span>
-                                        <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
-                                            {doc.chunk_count} chunks
-                                        </span>
+                                    <div
+                                        onClick={() => setSelectedDocId(doc.document_id)}
+                                        className="cursor-pointer"
+                                    >
+                                        <div className="flex justify-between items-start mb-1">
+                                            <span className="font-medium text-gray-900 truncate" title={doc.document_id}>
+                                                {doc.document_id.slice(0, 8)}...
+                                            </span>
+                                            <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+                                                {doc.chunk_count} chunks
+                                            </span>
+                                        </div>
+                                        <div className="text-xs text-gray-500 truncate">User: {doc.user_id}</div>
+                                        <div className="text-xs text-gray-400 mt-1">
+                                            {new Date(doc.created_at).toLocaleString()}
+                                        </div>
                                     </div>
-                                    <div className="text-xs text-gray-500 truncate">User: {doc.user_id}</div>
-                                    <div className="text-xs text-gray-400 mt-1">
-                                        {new Date(doc.created_at).toLocaleString()}
-                                    </div>
+
+                                    <button
+                                        onClick={(e) => handleDelete(e, doc.document_id)}
+                                        className="self-end text-xs text-red-600 hover:text-red-800 hover:underline px-2 py-1"
+                                    >
+                                        Delete
+                                    </button>
                                 </div>
                             ))
                         )}

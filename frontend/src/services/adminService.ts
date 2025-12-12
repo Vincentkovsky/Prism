@@ -68,4 +68,8 @@ export const adminService = {
         const response = await api.patch(`/users/${userId}`, data);
         return response.data;
     },
+
+    deleteChromaDocument: async (documentId: string): Promise<void> => {
+        await api.delete(`/chroma/documents/${documentId}`);
+    },
 };
