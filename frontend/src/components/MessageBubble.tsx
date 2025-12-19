@@ -26,17 +26,17 @@ export interface MessageBubbleProps {
  * Thumbs Up Icon
  */
 const ThumbsUpIcon: React.FC<{ filled?: boolean }> = ({ filled }) => (
-  <svg 
-    className="w-4 h-4" 
-    fill={filled ? 'currentColor' : 'none'} 
-    stroke="currentColor" 
+  <svg
+    className="w-4 h-4"
+    fill={filled ? 'currentColor' : 'none'}
+    stroke="currentColor"
     viewBox="0 0 24 24"
   >
-    <path 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
-      strokeWidth={2} 
-      d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" 
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5"
     />
   </svg>
 );
@@ -45,17 +45,17 @@ const ThumbsUpIcon: React.FC<{ filled?: boolean }> = ({ filled }) => (
  * Thumbs Down Icon
  */
 const ThumbsDownIcon: React.FC<{ filled?: boolean }> = ({ filled }) => (
-  <svg 
-    className="w-4 h-4" 
-    fill={filled ? 'currentColor' : 'none'} 
-    stroke="currentColor" 
+  <svg
+    className="w-4 h-4"
+    fill={filled ? 'currentColor' : 'none'}
+    stroke="currentColor"
     viewBox="0 0 24 24"
   >
-    <path 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
-      strokeWidth={2} 
-      d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.736 3h4.018a2 2 0 01.485.06l3.76.94m-7 10v5a2 2 0 002 2h.096c.5 0 .905-.405.905-.904 0-.715.211-1.413.608-2.008L17 13V4m-7 10h2m5-10h2a2 2 0 012 2v6a2 2 0 01-2 2h-2.5" 
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.736 3h4.018a2 2 0 01.485.06l3.76.94m-7 10v5a2 2 0 002 2h.096c.5 0 .905-.405.905-.904 0-.715.211-1.413.608-2.008L17 13V4m-7 10h2m5-10h2a2 2 0 012 2v6a2 2 0 01-2 2h-2.5"
     />
   </svg>
 );
@@ -105,7 +105,7 @@ const FeedbackButtons: React.FC<FeedbackButtonsProps> = ({
   };
 
   return (
-    <div 
+    <div
       className="flex items-center gap-1 mt-2"
       data-testid="feedback-buttons"
     >
@@ -116,8 +116,8 @@ const FeedbackButtons: React.FC<FeedbackButtonsProps> = ({
         onMouseLeave={() => setHoveredButton(null)}
         className={`
           p-1.5 rounded transition-colors
-          ${currentFeedback === 'up' 
-            ? 'text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30' 
+          ${currentFeedback === 'up'
+            ? 'text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30'
             : 'text-gray-400 hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20'
           }
         `}
@@ -127,7 +127,7 @@ const FeedbackButtons: React.FC<FeedbackButtonsProps> = ({
       >
         <ThumbsUpIcon filled={currentFeedback === 'up' || hoveredButton === 'up'} />
       </button>
-      
+
       <button
         type="button"
         onClick={() => handleFeedback('down')}
@@ -135,8 +135,8 @@ const FeedbackButtons: React.FC<FeedbackButtonsProps> = ({
         onMouseLeave={() => setHoveredButton(null)}
         className={`
           p-1.5 rounded transition-colors
-          ${currentFeedback === 'down' 
-            ? 'text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30' 
+          ${currentFeedback === 'down'
+            ? 'text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/30'
             : 'text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20'
           }
         `}
@@ -166,7 +166,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   // Create citation metadata map for the markdown renderer
   const citationMetadata = React.useMemo(() => {
     if (!message.citations) return undefined;
-    
+
     const map = new Map<string, Partial<Citation>>();
     for (const citation of message.citations) {
       const key = `${citation.documentId}:${citation.chunkId}`;
@@ -176,33 +176,33 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   }, [message.citations]);
 
   return (
-    <div 
+    <div
       className={`flex gap-3 ${isUser ? 'flex-row-reverse' : ''} ${className}`}
       data-testid={`message-bubble-${message.role}`}
       data-message-id={message.id}
     >
       {/* Avatar */}
       {isUser ? <UserAvatar /> : <AssistantAvatar />}
-      
+
       {/* Message Content */}
       <div className={`flex-1 max-w-[80%] ${isUser ? 'items-end' : 'items-start'}`}>
         {/* Thought Process (for assistant messages) */}
         {isAssistant && message.thoughtSteps && message.thoughtSteps.length > 0 && (
           <div className="mb-2">
-            <ThoughtProcess 
-              steps={message.thoughtSteps} 
+            <ThoughtProcess
+              steps={message.thoughtSteps}
               isThinking={isStreaming}
               defaultExpanded={isStreaming}
             />
           </div>
         )}
-        
+
         {/* Message Bubble */}
-        <div 
+        <div
           className={`
             rounded-2xl px-4 py-3
-            ${isUser 
-              ? 'bg-blue-600 text-white rounded-br-md' 
+            ${isUser
+              ? 'bg-blue-600 text-white rounded-br-md'
               : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-bl-md'
             }
           `}
@@ -212,27 +212,27 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             <p className="text-sm whitespace-pre-wrap">{message.content}</p>
           ) : (
             // Assistant messages support markdown and citations
-            <MarkdownRenderer 
+            <MarkdownRenderer
               content={message.content}
               onCitationClick={onCitationClick}
               citationMetadata={citationMetadata}
             />
           )}
-          
+
           {/* Streaming indicator */}
           {isStreaming && isAssistant && (
             <span className="inline-block w-2 h-4 ml-1 bg-gray-400 dark:bg-gray-500 animate-pulse rounded-sm" />
           )}
         </div>
-        
+
         {/* Timestamp */}
         <div className={`mt-1 text-xs text-gray-400 dark:text-gray-500 ${isUser ? 'text-right' : 'text-left'}`}>
-          {new Date(message.timestamp).toLocaleTimeString([], { 
-            hour: '2-digit', 
-            minute: '2-digit' 
+          {new Date(message.timestamp).toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit'
           })}
         </div>
-        
+
         {/* Feedback Buttons (for assistant messages only) */}
         {isAssistant && !isStreaming && (
           <FeedbackButtons

@@ -61,6 +61,47 @@ class ToolRegistry:
         """
         return [tool.schema_ for tool in self._tools.values()]
     
+    def to_openai_tools(self) -> List[Dict[str, Any]]:
+        """Export tools in OpenAI Function Calling format.
+        
+        Returns:
+            List of tool definitions compatible with OpenAI's `tools` parameter
+        """
+        tools = []
+        for schema in self.list_tools():
+            tools.append({
+                "type": "function",
+                "function": {
+                    "name": schema.name,
+                    "description": schema.description,
+                    "parameters": {
+                        "type": "object",
+                        "properties": schema.parameters.get("properties", {}),
+                        "required": schema.required,
+                    },
+                },
+            })
+        return tools
+    
+    def to_gemini_tools(self) -> List[Dict[str, Any]]:
+        """Export tools in Gemini Tool format.
+        
+        Returns:
+            List of function declarations compatible with Gemini's tool format
+        """
+        function_declarations = []
+        for schema in self.list_tools():
+            function_declarations.append({
+                "name": schema.name,
+                "description": schema.description,
+                "parameters": {
+                    "type": "object",
+                    "properties": schema.parameters.get("properties", {}),
+                    "required": schema.required,
+                },
+            })
+        return function_declarations
+    
     def invoke(self, name: str, **kwargs: Any) -> Any:
         """Invoke a tool by name with given parameters.
         
@@ -95,3 +136,4 @@ class ToolRegistry:
     def __contains__(self, name: str) -> bool:
         """Check if a tool is registered."""
         return name in self._tools
+

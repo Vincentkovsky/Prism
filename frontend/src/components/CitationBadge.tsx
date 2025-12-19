@@ -33,11 +33,11 @@ const Tooltip: React.FC<TooltipProps> = ({ citation, isVisible, anchorRef }) => 
     if (isVisible && anchorRef.current && tooltipRef.current) {
       const anchorRect = anchorRef.current.getBoundingClientRect();
       const tooltipRect = tooltipRef.current.getBoundingClientRect();
-      
+
       // Position above the badge by default
       let top = anchorRect.top - tooltipRect.height - 8;
       let left = anchorRect.left + (anchorRect.width / 2) - (tooltipRect.width / 2);
-      
+
       // Adjust if tooltip would go off screen
       if (top < 0) {
         top = anchorRect.bottom + 8; // Position below instead
@@ -48,7 +48,7 @@ const Tooltip: React.FC<TooltipProps> = ({ citation, isVisible, anchorRef }) => 
       if (left + tooltipRect.width > window.innerWidth) {
         left = window.innerWidth - tooltipRect.width - 8;
       }
-      
+
       setPosition({ top, left });
     }
   }, [isVisible, anchorRef]);
@@ -72,11 +72,10 @@ const Tooltip: React.FC<TooltipProps> = ({ citation, isVisible, anchorRef }) => 
         </p>
       )}
       <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-500">
-        <span className={`inline-flex items-center px-1.5 py-0.5 rounded ${
-          citation.sourceType === 'pdf' 
-            ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' 
+        <span className={`inline-flex items-center px-1.5 py-0.5 rounded ${citation.sourceType === 'pdf'
+            ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
             : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-        }`}>
+          }`}>
           {citation.sourceType === 'pdf' ? 'PDF' : 'Web'}
         </span>
         {citation.page && (
