@@ -16,6 +16,13 @@ except ImportError:  # pragma: no cover
     partition_pdf = None
     partition_html = None
 
+# MinerU integration for improved PDF parsing
+try:
+    from .mineru_parser import parse_pdf_with_mineru, MINERU_AVAILABLE
+except ImportError:
+    parse_pdf_with_mineru = None
+    MINERU_AVAILABLE = False
+
 try:
     import tiktoken
 except ImportError:  # pragma: no cover
@@ -42,10 +49,10 @@ try:
     from google.genai.errors import ClientError
 except ImportError:
     retry = lambda *args, **kwargs: lambda f: f
-    stop_after_attempt = lambda x: x
-    wait_exponential = lambda *args, **kwargs: x
-    retry_if_exception_type = lambda x: x
-    before_sleep_log = lambda logger, level: lambda f: f
+    stop_after_attempt = lambda x: None
+    wait_exponential = lambda *args, **kwargs: None
+    retry_if_exception_type = lambda x: None
+    before_sleep_log = lambda logger, level: None
     ClientError = Exception
 
 try:
@@ -111,8 +118,28 @@ class StructuredChunker:
     # --------------------- Parsing ---------------------
 
     def parse_pdf(self, pdf_path: Path) -> List[Dict]:
+        """Parse PDF using MinerU (preferred) with fallback to unstructured."""
+        
+        # Try MinerU first (better quality for tables, formulas, multi-column layouts)
+        if MINERU_AVAILABLE and parse_pdf_with_mineru:
+            try:
+                result = parse_pdf_with_mineru(pdf_path)
+                logging.getLogger(__name__).info(
+                    f"Parsed {pdf_path.name} with MinerU ({result.get('backend', 'unknown')} backend)"
+                )
+                return result["elements"]
+            except Exception as e:
+                logging.getLogger(__name__).warning(
+                    f"MinerU parsing failed, falling back to unstructured: {e}"
+                )
+        
+        # Fallback to original unstructured method
+        return self._parse_pdf_with_unstructured(pdf_path)
+    
+    def _parse_pdf_with_unstructured(self, pdf_path: Path) -> List[Dict]:
+        """Original PDF parsing using unstructured library."""
         if not partition_pdf:
-            raise ImportError("Please install 'unstructured[pdf]' to parse PDFs.")
+            raise ImportError("Please install 'unstructured[pdf]' or 'mineru[core]' to parse PDFs.")
         
         try:
             elements = partition_pdf(
