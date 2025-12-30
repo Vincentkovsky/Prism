@@ -155,7 +155,7 @@ class JinaReranker(BaseReranker):
     """Jina Reranker v3 实现"""
     
     ENDPOINT = "https://api.jina.ai/v1/rerank"
-    MODEL = "jina-reranker-v3"
+    MODEL = "jina-reranker-v2-base-multilingual"
     
     def __init__(self, api_key: Optional[str] = None):
         super().__init__()
@@ -175,22 +175,29 @@ class JinaReranker(BaseReranker):
     ) -> List[RerankResult]:
         import requests
         
-        response = requests.post(
-            self.ENDPOINT,
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {self.api_key}",
-            },
-            json={
-                "model": self.MODEL,
-                "query": query,
-                "top_n": top_n,
-                "documents": documents,
-                "return_documents": False,
-            },
-            timeout=30,
-        )
-        response.raise_for_status()
+        try:
+            response = requests.post(
+                self.ENDPOINT,
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {self.api_key}",
+                },
+                json={
+                    "model": self.MODEL,
+                    "query": query,
+                    "top_n": top_n,
+                    "documents": documents,
+                    "return_documents": False,
+                },
+                timeout=30,
+            )
+            response.raise_for_status()
+        except requests.exceptions.RequestException as e:
+            error_detail = ""
+            if hasattr(e, "response") and e.response is not None:
+                error_detail = f" | Status: {e.response.status_code} | Response: {e.response.text[:300]}"
+            self.logger.warning(f"Jina API request failed: {e}{error_detail}")
+            raise
         
         data = response.json()
         results: List[RerankResult] = []
@@ -201,7 +208,8 @@ class JinaReranker(BaseReranker):
                     relevance_score=item["relevance_score"],
                 )
             )
-        
+            
+        self.logger.info(f"Jina API call succeeded. Used tokens: {data.get('usage', {}).get('total_tokens', 'unknown')}")
         return results
 
 
