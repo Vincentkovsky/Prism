@@ -1,24 +1,26 @@
 """
 Document Search Tool for the Agent.
 
-Provides document retrieval functionality by integrating with RAGService.
+Provides document retrieval functionality by integrating with RetrievalService.
 """
 
 import logging
 from typing import Any, Dict, List, Optional
 
 from ..types import Tool, ToolSchema
-from ...services.rag_service import RAGService
+from ...services.retrieval_service import RetrievalService, get_retrieval_service
 
 
 logger = logging.getLogger("app.agent.tools.document_search")
 
 
-def create_document_search_tool(rag_service: RAGService) -> Tool:
+def create_document_search_tool(
+    retrieval_service: Optional[RetrievalService] = None,
+) -> Tool:
     """Create a document_search tool instance.
     
     Args:
-        rag_service: The RAGService instance to use for retrieval
+        retrieval_service: The RetrievalService instance to use (optional, uses singleton if not provided)
         
     Returns:
         A Tool instance configured for document search
@@ -26,6 +28,9 @@ def create_document_search_tool(rag_service: RAGService) -> Tool:
     from ...core.config import get_settings
     settings = get_settings()
     default_k = settings.retrieval_top_k
+    
+    # Use provided service or get singleton
+    service = retrieval_service or get_retrieval_service()
     
     def document_search(
         query: str,
@@ -52,11 +57,14 @@ def create_document_search_tool(rag_service: RAGService) -> Tool:
         )
         
         try:
-            chunks = rag_service.get_relevant_chunks(
-                question=query,
-                document_id=document_id,  # Will be None to search all documents
+            # Use retrieve() which includes reranking
+            chunks = service.retrieve(
+                query=query,
                 user_id=user_id,
-                k=k,
+                document_id=document_id,
+                top_k=k * 2,  # Retrieve more for reranking
+                rerank=True,
+                rerank_top_n=k,
             )
             
             # Format results for agent consumption
@@ -68,7 +76,7 @@ def create_document_search_tool(rag_service: RAGService) -> Tool:
                     "document_id": chunk.get("metadata", {}).get("document_id", "unknown"),
                     "section": chunk.get("metadata", {}).get("section_path", "unknown"),
                     "page": chunk.get("metadata", {}).get("page_number"),
-                    "relevance_score": 1.0 - chunk.get("distance", 0.0),  # Convert distance to score
+                    "relevance_score": chunk.get("rerank_score", 1.0 - chunk.get("distance", 0.0)),
                 })
             
             logger.info(f"Document search returned {len(results)} results")

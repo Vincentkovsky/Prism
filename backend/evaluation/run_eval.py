@@ -1,34 +1,25 @@
-"""Script to evaluate RAG pipeline quality using RAGAS."""
+"""Script to evaluate Agent pipeline quality using RAGAS."""
 import sys
 import os
 import json
 import argparse
 from pathlib import Path
 
-# Ensure we run from project root for correct ChromaDB path resolution
-# Current file is in backend/evaluation/run_eval.py
-# We want to add 'backend' to sys.path so we can import 'app'
+# Ensure we run from project root
 script_dir = os.path.dirname(os.path.abspath(__file__))
-project_root = os.path.dirname(os.path.dirname(script_dir)) # Prism/
+project_root = os.path.dirname(os.path.dirname(script_dir))
 backend_dir = os.path.join(project_root, "backend")
 
 os.chdir(project_root)
 if backend_dir not in sys.path:
     sys.path.insert(0, backend_dir)
 
-from app.services.rag_service import RAGService
-from app.services.evaluation_service import RAGEvaluationService, EvaluationSample
+from app.services.evaluation_service import RAGEvaluationService
 
 
-DOCUMENT_ID = "bbb5448f-cb96-40a5-8791-256e3d27dedb"
-USER_ID = "736d7b5d-96f2-4c9e-96bd-b56a403b1c45"
+# Default test user ID
+DEFAULT_USER_ID = "99d0b344-1647-465c-9663-25e9207c69f4"
 
-
-#for plain RAG
-
-
-DOCUMENT_ID = "1a248384-73e8-432b-b1a8-33c4dcb4db17"
-USER_ID = "99d0b344-1647-465c-9663-25e9207c69f4"
 
 def load_dataset(path: str):
     """Load QA pairs from JSON file."""
@@ -40,24 +31,21 @@ def load_dataset(path: str):
         print(f"Error loading dataset {path}: {e}")
         sys.exit(1)
 
+
 def main():
-    parser = argparse.ArgumentParser(description="Evaluate RAG pipeline using RAGAS")
+    parser = argparse.ArgumentParser(description="Evaluate Agent pipeline using RAGAS")
     parser.add_argument("--sample", type=int, default=None, help="Number of samples to evaluate")
     parser.add_argument("--no-ground-truth", action="store_true", help="Skip context_recall metric")
     parser.add_argument("--output", type=str, default="evaluation_results.json", help="Output JSON filename")
-    parser.add_argument("--doc-id", type=str, default=DOCUMENT_ID, help="Document ID to test against")
-    parser.add_argument("--user-id", type=str, default=USER_ID, help="User ID for access")
-    parser.add_argument("--mode", type=str, choices=["agent", "rag"], default="rag",
-                        help="Evaluation mode: 'agent' (multi-step reasoning) or 'rag' (direct retrieval)")
+    parser.add_argument("--user-id", type=str, default=DEFAULT_USER_ID, help="User ID for access")
     
-    # Resolve default dataset path relative to this script
     default_dataset = os.path.join(os.path.dirname(__file__), "datasets", "tesla_10k_qa.json")
     parser.add_argument("--dataset", type=str, default=default_dataset, help="Path to QA dataset JSON")
     
     args = parser.parse_args()
     
     print("\n" + "=" * 60)
-    print("RAG Pipeline Evaluation using RAGAS")
+    print("Agent Pipeline Evaluation using RAGAS")
     print("=" * 60)
     
     # Load dataset
@@ -68,22 +56,18 @@ def main():
     all_questions = [qa["question"] for qa in dataset]
     all_ground_truths = [qa["ground_truth"] for qa in dataset]
 
-    # Initialize services
+    # Initialize service
     try:
         eval_service = RAGEvaluationService()
-        if args.mode == "rag":
-            rag_service = RAGService()
     except Exception as e:
-        print(f"Error initializing services: {e}")
-        print("Make sure you are running from the project root and requirements are installed.")
+        print(f"Error initializing evaluation service: {e}")
         return
 
     # Select samples
     questions = all_questions[:args.sample] if args.sample else all_questions
     ground_truths = None if args.no_ground_truth else (all_ground_truths[:args.sample] if args.sample else all_ground_truths)
     
-    print(f"\n🔧 Mode: {args.mode.upper()}")
-    print(f"Document ID: {args.doc_id}")
+    print(f"\n🔧 Mode: AGENT (multi-step reasoning)")
     print(f"User ID: {args.user_id}")
     print(f"Test questions: {len(questions)}")
     print(f"Ground truth: {'Disabled' if args.no_ground_truth else 'Enabled'}")
@@ -93,20 +77,11 @@ def main():
     print("\n🚀 Running evaluation (this may take a few minutes)...")
     
     try:
-        if args.mode == "agent":
-            result = eval_service.evaluate_from_agent(
-                user_id=args.user_id,
-                test_questions=questions,
-                ground_truths=ground_truths,
-            )
-        else:
-            result = eval_service.evaluate_from_rag_service(
-                rag_service=rag_service,
-                document_id=args.doc_id,
-                user_id=args.user_id,
-                test_questions=questions,
-                ground_truths=ground_truths,
-            )
+        result = eval_service.evaluate_from_agent(
+            user_id=args.user_id,
+            test_questions=questions,
+            ground_truths=ground_truths,
+        )
     except Exception as e:
         print(f"\n❌ Evaluation failed: {e}")
         import traceback
@@ -134,7 +109,6 @@ def main():
     print(f"🕐 Timestamp:           {result.timestamp}")
     
     # Save results
-    # Save to backend/evaluation/results/ by default if path not absolute
     if os.path.isabs(args.output):
         output_path = Path(args.output)
     else:

@@ -30,7 +30,7 @@ from ..agent.tracing.tracer import ExecutionTracer, ExecutionTrace
 from ..agent.retrieval.hybrid_retriever import HybridRetriever
 from ..agent.retrieval.bm25_store import BM25IndexStore
 from ..agent.types import AgentResponse, AgentStreamEvent
-from .rag_service import RAGService
+from .retrieval_service import RetrievalService, get_retrieval_service
 
 
 logger = logging.getLogger(__name__)
@@ -59,7 +59,7 @@ class AgentService:
     def __init__(
         self,
         settings: Optional[Settings] = None,
-        rag_service: Optional[RAGService] = None,
+        retrieval_service: Optional[RetrievalService] = None,
         chroma_client: Optional[chromadb.Client] = None,
         router: Optional[IntentRouter] = None,
         tool_registry: Optional[ToolRegistry] = None,
@@ -69,15 +69,15 @@ class AgentService:
         
         Args:
             settings: Application settings (uses defaults if not provided)
-            rag_service: RAG service for document retrieval
+            retrieval_service: Retrieval service for document search
             chroma_client: ChromaDB client for vector search
             router: Intent router (creates default if not provided)
             tool_registry: Tool registry (creates default with built-in tools if not provided)
         """
         self._settings = settings or get_settings()
         
-        # Initialize RAG service
-        self._rag_service = rag_service or RAGService()
+        # Initialize retrieval service
+        self._retrieval_service = retrieval_service or get_retrieval_service()
         
         # Initialize ChromaDB client
         if chroma_client:
@@ -282,7 +282,7 @@ class AgentService:
         registry = ToolRegistry()
         
         # Register document search tool
-        doc_search_tool = create_document_search_tool(self._rag_service)
+        doc_search_tool = create_document_search_tool(self._retrieval_service)
         registry.register(doc_search_tool)
         
         # Try to register web search tool if API key is available

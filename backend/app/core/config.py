@@ -81,6 +81,12 @@ class Settings(BaseSettings):
     tavily_api_key: Optional[str] = None  # API key for Tavily web search
     serpapi_key: Optional[str] = None  # API key for SerpApi web search
 
+    # Jina Rerank configuration
+    jina_api_key: Optional[str] = None  # API key for Jina Reranker
+    rerank_provider: str = "jina"  # Reranker provider: "jina" | "bge" | "rule"
+    rerank_enabled: bool = True  # Whether to use neural reranking (falls back to rule-based if API fails)
+    rerank_top_n: int = 5  # Number of top results to return after reranking
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

@@ -1,3 +1,4 @@
+"""Cache Service for Redis-backed caching."""
 from __future__ import annotations
 
 import hashlib
@@ -12,24 +13,16 @@ except ImportError:  # pragma: no cover
 from ..core.config import get_settings
 
 
-def qa_cache_key(document_id: str, question: str) -> str:
-    signature = hashlib.md5(f"{document_id}:{question}".encode("utf-8")).hexdigest()
-    return f"qa:{signature}"
-
-
 def chunks_cache_key(document_id: str, question: str) -> str:
+    """Generate cache key for chunk retrieval results."""
     signature = hashlib.md5(f"chunks:{document_id}:{question}".encode("utf-8")).hexdigest()
     return f"chunks:{signature}"
-
-
-def analysis_cache_key(document_id: str) -> str:
-    return f"analysis:{document_id}"
 
 
 class CacheService:
     """Redis-backed cache service with simple hit/miss metrics."""
 
-    DEFAULT_LAYERS = ["qa", "chunks", "analysis"]
+    DEFAULT_LAYERS = ["chunks"]
 
     def __init__(self, redis_client: Optional[Redis] = None, metric_layers: Optional[list[str]] = None):
         if redis_client is not None:
@@ -65,7 +58,7 @@ class CacheService:
     def delete(self, key: str) -> None:
         self.redis.delete(key)
 
-    # --- Metrics helpers -------------------------------------------------
+    # --- Metrics helpers ---
     def _record_hit(self, layer: Optional[str]) -> None:
         if layer and layer in self.metrics:
             self.metrics[layer]["hit"] += 1
